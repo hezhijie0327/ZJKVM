@@ -13,7 +13,7 @@ import {
   Square,
   Volume2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { AudioPanel } from "@/components/toolbar/panels/AudioPanel";
 import { KeyboardPanel } from "@/components/toolbar/panels/KeyboardPanel";
 import { MousePanel } from "@/components/toolbar/panels/MousePanel";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { downloadBlob, StreamRecorder } from "@/lib/recorder";
 import { captureFrame, copyBlobToClipboard } from "@/lib/snapshot";
-import { TOOLBAR, TOOLBAR_DIVIDER } from "@/lib/styles";
+import { CARD, TOOLBAR, TOOLBAR_DIVIDER } from "@/lib/styles";
 import {
   activePanelAtom,
   recordingAtom,
@@ -38,8 +38,10 @@ import {
 } from "@/state/atoms";
 import { pushToast } from "@/state/toast";
 
-/** Floating console toolbar: glass pill above the stage (draggable on fine
- *  pointers), bottom bar on touch layouts. One panel open at a time. */
+/** Console toolbar. Desktop: draggable glass pill under the navigation, one
+ *  panel open at a time (anchored popovers). Mobile: a fixed bottom dock —
+ *  one scrollable button row (safe-area aware) with the open panel rendered
+ *  as a sheet above the dock, so the status bar never gets covered. */
 export function Toolbar() {
   const { t } = useI18n();
   const activePanel = useAtomValue(activePanelAtom);
@@ -64,7 +66,6 @@ export function Toolbar() {
 
   const [dragging, setDragging] = useState(false);
   const isMobile = useIsMobile();
-  const panelSide = isMobile ? "top" : "bottom";
   const togglePanel = useCallback(
     (panel: string) => {
       setActivePanel(activePanel === panel ? null : panel);
@@ -191,9 +192,102 @@ export function Toolbar() {
     }
   };
 
+  const buttons = (withAnchors: boolean) => (
+    <>
+      <IconButton
+        ref={withAnchors ? videoButtonRef : undefined}
+        label={t("tb.video")}
+        active={activePanel === "video"}
+        onClick={() => togglePanel("video")}
+        className="shrink-0"
+      >
+        <Monitor aria-hidden="true" className="size-4" />
+      </IconButton>
+      <IconButton
+        ref={withAnchors ? audioButtonRef : undefined}
+        label={t("tb.audio")}
+        active={activePanel === "audio"}
+        onClick={() => togglePanel("audio")}
+        className="shrink-0"
+      >
+        <Volume2 aria-hidden="true" className="size-4" />
+      </IconButton>
+      <IconButton
+        ref={withAnchors ? keyboardButtonRef : undefined}
+        label={t("tb.keyboard")}
+        active={activePanel === "keyboard"}
+        onClick={() => togglePanel("keyboard")}
+        className="shrink-0"
+      >
+        <KeyboardIcon aria-hidden="true" className="size-4" />
+      </IconButton>
+      <IconButton
+        ref={withAnchors ? mouseButtonRef : undefined}
+        label={t("tb.mouse")}
+        active={activePanel === "mouse"}
+        onClick={() => togglePanel("mouse")}
+        className="shrink-0"
+      >
+        <MousePointer2 aria-hidden="true" className="size-4" />
+      </IconButton>
+
+      <span aria-hidden="true" className={TOOLBAR_DIVIDER} />
+
+      <IconButton
+        label={recording ? t("rec.stop") : t("rec.start")}
+        active={recording}
+        onClick={toggleRecording}
+        className={cn("shrink-0", recording && "text-danger hover:text-danger")}
+      >
+        {recording ? (
+          <Square aria-hidden="true" className="size-4" />
+        ) : (
+          <Circle aria-hidden="true" className="size-4" />
+        )}
+      </IconButton>
+      <IconButton label={t("tb.screenshot")} onClick={snapshot} className="shrink-0">
+        <Camera aria-hidden="true" className="size-4" />
+      </IconButton>
+      {supportsPictureInPicture() && (
+        <IconButton label={t("tb.pip")} onClick={togglePip} className="shrink-0">
+          <PictureInPicture2 aria-hidden="true" className="size-4" />
+        </IconButton>
+      )}
+
+      <span aria-hidden="true" className={TOOLBAR_DIVIDER} />
+
+      <IconButton
+        ref={withAnchors ? settingsButtonRef : undefined}
+        label={t("tb.settings")}
+        active={activePanel === "settings"}
+        onClick={() => togglePanel("settings")}
+        className="shrink-0"
+      >
+        <Settings2 aria-hidden="true" className="size-4" />
+      </IconButton>
+      <IconButton label={t("tb.fullscreen")} onClick={toggleFullscreen} className="shrink-0">
+        <Maximize aria-hidden="true" className="size-4" />
+      </IconButton>
+      <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)} className="shrink-0">
+        <ChevronUp aria-hidden="true" className="size-4" />
+      </IconButton>
+    </>
+  );
+
+  const PANELS: Record<string, ReactNode> = {
+    video: <VideoPanel />,
+    audio: <AudioPanel />,
+    keyboard: <KeyboardPanel />,
+    mouse: <MousePanel />,
+    settings: <SettingsPanel onAbout={() => setActivePanel(null)} />,
+  };
+
   if (collapsed) {
     return (
-      <div className="pointer-events-none absolute inset-x-0 bottom-16 z-40 flex justify-center md:bottom-auto md:top-2">
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex justify-center md:absolute md:inset-x-auto md:bottom-auto md:top-2"
+        style={{ transform: isMobile ? undefined : `translateY(${pos.y}px)` }}
+      >
         <div className="pointer-events-auto">
           <IconButton label={t("tb.expand")} active onClick={() => setCollapsed(false)} className="shadow-pop">
             <ChevronDown aria-hidden="true" className="size-4" />
@@ -203,119 +297,69 @@ export function Toolbar() {
     );
   }
 
+  if (isMobile) {
+    return (
+      <>
+        {/* Open panel as a sheet above the dock — never overlapping the status bar */}
+        {activePanel && PANELS[activePanel] && (
+          <div
+            className={cn(
+              CARD,
+              "animate-fade-up fixed inset-x-2 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 max-h-[62dvh] overflow-y-auto overscroll-contain shadow-pop",
+            )}
+          >
+            {PANELS[activePanel]}
+          </div>
+        )}
+
+        {/* Bottom dock: one scrollable row, clear of the home indicator */}
+        <div
+          role="toolbar"
+          aria-label="KVM"
+          aria-orientation="horizontal"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-line/80 bg-bg/85 backdrop-blur-md"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            {buttons(false)}
+          </div>
+        </div>
+        {recording && <span className="sr-only" aria-live="polite" />}
+      </>
+    );
+  }
+
   return (
     <div
-      className={cn(
-        "z-40 flex justify-center px-2",
-        isMobile ? "fixed inset-x-0 bottom-3" : "pointer-events-none absolute inset-x-0 top-2 max-md:static",
-      )}
-      style={isMobile ? undefined : { transform: `translateY(${pos.y}px)` }}
+      className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center px-2"
+      style={{ transform: `translateY(${pos.y}px)` }}
     >
       <div
         ref={toolbarRef}
-        className={cn(
-          TOOLBAR,
-          "pointer-events-auto select-none",
-          isMobile && "max-w-full flex-wrap justify-center",
-          dragging && "cursor-grabbing",
-        )}
-        style={isMobile ? undefined : { transform: `translateX(${pos.x}px)` }}
+        className={cn(TOOLBAR, "pointer-events-auto select-none", dragging && "cursor-grabbing")}
+        style={{ transform: `translateX(${pos.x}px)` }}
         role="toolbar"
         aria-label="KVM"
         aria-orientation="horizontal"
       >
-        {!isMobile && (
-          <button
-            type="button"
-            aria-label="drag"
-            onPointerDown={onHandlePointerDown}
-            className={cn(
-              "grid size-8 cursor-grab place-items-center rounded-full text-ink-3 hover:text-ink",
-              dragging && "cursor-grabbing",
-            )}
-          >
-            <GripDots />
-          </button>
-        )}
-
-        <IconButton
-          ref={videoButtonRef}
-          label={t("tb.video")}
-          active={activePanel === "video"}
-          onClick={() => togglePanel("video")}
-        >
-          <Monitor aria-hidden="true" className="size-4" />
-        </IconButton>
-        <IconButton
-          ref={audioButtonRef}
-          label={t("tb.audio")}
-          active={activePanel === "audio"}
-          onClick={() => togglePanel("audio")}
-        >
-          <Volume2 aria-hidden="true" className="size-4" />
-        </IconButton>
-        <IconButton
-          ref={keyboardButtonRef}
-          label={t("tb.keyboard")}
-          active={activePanel === "keyboard"}
-          onClick={() => togglePanel("keyboard")}
-        >
-          <KeyboardIcon aria-hidden="true" className="size-4" />
-        </IconButton>
-        <IconButton
-          ref={mouseButtonRef}
-          label={t("tb.mouse")}
-          active={activePanel === "mouse"}
-          onClick={() => togglePanel("mouse")}
-        >
-          <MousePointer2 aria-hidden="true" className="size-4" />
-        </IconButton>
-
-        <span aria-hidden="true" className={TOOLBAR_DIVIDER} />
-
-        <IconButton
-          label={recording ? t("rec.stop") : t("rec.start")}
-          active={recording}
-          onClick={toggleRecording}
-          className={recording ? "text-danger hover:text-danger" : undefined}
-        >
-          {recording ? (
-            <Square aria-hidden="true" className="size-4" />
-          ) : (
-            <Circle aria-hidden="true" className="size-4" />
+        <button
+          type="button"
+          aria-label="drag"
+          onPointerDown={onHandlePointerDown}
+          className={cn(
+            "grid size-8 cursor-grab place-items-center rounded-full text-ink-3 hover:text-ink",
+            dragging && "cursor-grabbing",
           )}
-        </IconButton>
-        <IconButton label={t("tb.screenshot")} onClick={snapshot}>
-          <Camera aria-hidden="true" className="size-4" />
-        </IconButton>
-        {supportsPictureInPicture() && (
-          <IconButton label={t("tb.pip")} onClick={togglePip}>
-            <PictureInPicture2 aria-hidden="true" className="size-4" />
-          </IconButton>
-        )}
-
-        <span aria-hidden="true" className={TOOLBAR_DIVIDER} />
-
-        <IconButton
-          ref={settingsButtonRef}
-          label={t("tb.settings")}
-          active={activePanel === "settings"}
-          onClick={() => togglePanel("settings")}
         >
-          <Settings2 aria-hidden="true" className="size-4" />
-        </IconButton>
-        <IconButton label={t("tb.fullscreen")} onClick={toggleFullscreen}>
-          <Maximize aria-hidden="true" className="size-4" />
-        </IconButton>
-        <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)}>
-          <ChevronUp aria-hidden="true" className="size-4" />
-        </IconButton>
+          <GripDots />
+        </button>
 
-        {/* Panels: drop below the pill on desktop, rise above the bar on mobile */}
+        {buttons(true)}
+
+        {/* Panels drop below the pill */}
         <Popover
           open={activePanel === "video"}
           onClose={() => setActivePanel(null)}
-          side={panelSide}
           anchorRef={videoButtonRef}
           className="w-80"
         >
@@ -324,7 +368,6 @@ export function Toolbar() {
         <Popover
           open={activePanel === "audio"}
           onClose={() => setActivePanel(null)}
-          side={panelSide}
           anchorRef={audioButtonRef}
           className="w-80"
         >
@@ -333,7 +376,6 @@ export function Toolbar() {
         <Popover
           open={activePanel === "keyboard"}
           onClose={() => setActivePanel(null)}
-          side={panelSide}
           anchorRef={keyboardButtonRef}
           className="w-96 max-w-[calc(100vw-1.5rem)]"
         >
@@ -342,7 +384,6 @@ export function Toolbar() {
         <Popover
           open={activePanel === "mouse"}
           onClose={() => setActivePanel(null)}
-          side={panelSide}
           anchorRef={mouseButtonRef}
           className="w-80"
         >
@@ -351,7 +392,6 @@ export function Toolbar() {
         <Popover
           open={activePanel === "settings"}
           onClose={() => setActivePanel(null)}
-          side={panelSide}
           anchorRef={settingsButtonRef}
           className="w-80"
         >
