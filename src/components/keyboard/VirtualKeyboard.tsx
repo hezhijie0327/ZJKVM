@@ -1,15 +1,19 @@
-/** Virtual keyboard: hand-rolled (the original shipped a 400 KB keyboard lib).
- *  Modifier latch semantics from the original: tapping a modifier latches it
- *  down; the next normal key sends modifier+key and releases everything;
- *  tapping the same modifier again presses-and-releases it alone. */
+/** Virtual keyboard: hand-rolled floating window (the original shipped a
+ *  400 KB keyboard lib). Desktop: a draggable paper card (position
+ *  persisted); mobile: a bottom sheet. Modifier latch semantics from the
+ *  original: tapping a modifier latches it down; the next normal key sends
+ *  modifier+key and releases everything; tapping the same modifier again
+ *  presses-and-releases it alone. */
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { cn } from "@/lib/cn";
 import { requireLink } from "@/lib/device/device";
 import { KeyboardReport } from "@/lib/device/keyboard-report";
 import { isModifier } from "@/lib/device/keymap";
 import { useI18n } from "@/lib/i18n";
+import * as storage from "@/lib/storage";
 import { EYEBROW, TAPE } from "@/lib/styles";
 
 interface VKey {
@@ -121,11 +125,75 @@ const CONTROL_KEYS: VKey[] = [
 
 const ARROWS: VKey[] = [K("ArrowUp", "↑"), K("ArrowLeft", "←"), K("ArrowDown", "↓"), K("ArrowRight", "→")];
 
+/** Full numpad cluster: 4-column grid, + and ⏎ span two rows, 0 spans two columns. */
+const NUMPAD: VKey[][] = [
+  [K("NumLock", "Num"), K("NumpadDivide", "/"), K("NumpadMultiply", "*"), K("NumpadSubtract", "-")],
+  [K("Numpad7", "7"), K("Numpad8", "8"), K("Numpad9", "9"), K("NumpadAdd", "+")],
+  [K("Numpad4", "4"), K("Numpad5", "5"), K("Numpad6", "6")],
+  [K("Numpad1", "1"), K("Numpad2", "2"), K("Numpad3", "3")],
+  [K("Numpad0", "0", 2.1), K("NumpadDecimal", ".")],
+];
+
+interface Pos {
+  x: number;
+  y: number;
+}
+
+const clampPos = (pos: Pos, width: number, height: number): Pos => ({
+  x: Math.max(8, Math.min(window.innerWidth - width - 8, pos.x)),
+  y: Math.max(8, Math.min(window.innerHeight - height - 8, pos.y)),
+});
+
 export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const reportRef = useRef(new KeyboardReport());
   const latchedRef = useRef(new Set<string>());
   const [pressed, setPressed] = useState<Set<string>>(new Set());
+
+  /* Floating window position (desktop). null = not measured yet — the layout
+     effect places a fresh window bottom-center and clamps saved ones. */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<Pos | null>(() => storage.getKeyboardPos());
+  const posRef = useRef<Pos | null>(pos);
+  posRef.current = pos;
+
+  useLayoutEffect(() => {
+    if (isMobile || !panelRef.current) return;
+    const el = panelRef.current;
+    const saved = posRef.current;
+    const fresh = {
+      x: Math.round((window.innerWidth - el.offsetWidth) / 2),
+      y: Math.max(8, window.innerHeight - el.offsetHeight - 48),
+    };
+    setPos(clampPos(saved ?? fresh, el.offsetWidth, el.offsetHeight));
+  }, [isMobile]);
+
+  const onHeaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isMobile || !posRef.current || event.button !== 0) return;
+    if (event.target instanceof HTMLElement && event.target.closest("button")) return;
+    event.preventDefault();
+    const el = panelRef.current;
+    if (!el) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const origin = { ...posRef.current };
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+
+    const onMove = (move: PointerEvent) => {
+      setPos(clampPos({ x: origin.x + move.clientX - startX, y: origin.y + move.clientY - startY }, width, height));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (posRef.current) {
+        storage.setKeyboardPos(posRef.current);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
 
   const send = useCallback(async (report: number[]) => {
     try {
@@ -189,14 +257,18 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     };
   }, [send]);
 
-  const renderKey = (key: VKey) => (
+  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean) => (
     <button
       key={key.code}
       type="button"
       aria-label={key.label || key.code}
       data-pressed={pressed.has(key.code) || undefined}
-      className="kvm-key select-none touch-none"
-      style={key.width ? { minWidth: `${key.width * 2}rem` } : undefined}
+      className={cn("kvm-key select-none touch-none", extraClass)}
+      style={{
+        ...(key.width ? { minWidth: `${key.width * 2}rem` } : undefined),
+        // kvm-key pins a fixed height; spanning keys must fill their grid area
+        ...(fullHeight ? { height: "auto", minHeight: "100%" } : undefined),
+      }}
       onPointerDown={(event) => {
         event.preventDefault();
         void keyPress(key);
@@ -212,10 +284,34 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-80 border-t border-line bg-surface/95 shadow-pop backdrop-blur-md">
+    <div
+      ref={panelRef}
+      className={cn(
+        "z-80 select-none border-line bg-surface shadow-pop",
+        isMobile ? "fixed inset-x-0 bottom-0 rounded-t-2xl border-t backdrop-blur-md" : "fixed rounded-2xl border",
+      )}
+      style={isMobile ? undefined : { left: pos?.x ?? -9999, top: pos?.y ?? -9999, opacity: pos ? 1 : 0 }}
+      role="group"
+      aria-label={t("vk.title")}
+    >
       <span aria-hidden="true" className={cn(TAPE, "-top-2 left-10 w-24 -rotate-3 bg-accent-soft/80")} />
-      <div className="flex items-center justify-between px-4 pt-2">
-        <p className={EYEBROW}>{t("vk.title")}</p>
+
+      {/* Header doubles as the drag handle (desktop) */}
+      <div
+        className={cn(
+          "flex items-center justify-between px-4 pt-2",
+          !isMobile && "cursor-grab touch-none active:cursor-grabbing",
+        )}
+        onPointerDown={onHeaderPointerDown}
+      >
+        <p className={cn(EYEBROW, "flex items-center gap-2")}>
+          {!isMobile && (
+            <span aria-hidden="true" className="inline-block text-ink-3">
+              <GripDots />
+            </span>
+          )}
+          {t("vk.title")}
+        </p>
         <button
           type="button"
           aria-label={t("common.close")}
@@ -227,28 +323,66 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto px-4 pb-4 pt-1">
-        <div className="flex min-w-fit flex-col gap-1.5">
-          {ROWS.map((row) => (
-            <div key={row[0]?.code ?? row.length} className="flex gap-1.5">
-              {row.map(renderKey)}
-            </div>
-          ))}
-        </div>
+      {/* Centered keyboard group: main block + control/arrows + numpad.
+          Clusters hide on narrow screens; the group scrolls horizontally. */}
+      <div className="overflow-x-auto px-4 pb-4 pt-1">
+        <div className="mx-auto flex w-fit max-w-full items-start gap-4">
+          <div className="flex min-w-fit flex-col gap-1.5">
+            {ROWS.map((row) => (
+              <div key={row[0]?.code ?? row.length} className="flex gap-1.5">
+                {row.map((k) => renderKey(k))}
+              </div>
+            ))}
+          </div>
 
-        {/* Control cluster + arrows (wide screens) */}
-        <div className="hidden flex-col justify-between gap-1.5 md:flex">
-          <div className="grid grid-cols-3 gap-1.5">{CONTROL_KEYS.map(renderKey)}</div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <span />
-            {renderKey(ARROWS[0]!)}
-            <span />
-            {renderKey(ARROWS[1]!)}
-            {renderKey(ARROWS[2]!)}
-            {renderKey(ARROWS[3]!)}
+          {/* Control cluster + arrows (wide screens) */}
+          <div className="hidden shrink-0 flex-col justify-between gap-1.5 md:flex">
+            <div className="grid grid-cols-3 gap-1.5">{CONTROL_KEYS.map((k) => renderKey(k))}</div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <span />
+              {renderKey(ARROWS[0]!)}
+              <span />
+              {renderKey(ARROWS[1]!)}
+              {renderKey(ARROWS[2]!)}
+              {renderKey(ARROWS[3]!)}
+            </div>
+          </div>
+
+          {/* Numpad (wide screens) */}
+          <div className="hidden shrink-0 grid-cols-4 gap-1.5 md:grid">
+            {renderKey(NUMPAD[0]![0]!)}
+            {renderKey(NUMPAD[0]![1]!)}
+            {renderKey(NUMPAD[0]![2]!)}
+            {renderKey(NUMPAD[0]![3]!)}
+            {renderKey(NUMPAD[1]![0]!)}
+            {renderKey(NUMPAD[1]![1]!)}
+            {renderKey(NUMPAD[1]![2]!)}
+            {renderKey(NUMPAD[1]![3]!, "row-span-2", true)}
+            {renderKey(NUMPAD[2]![0]!)}
+            {renderKey(NUMPAD[2]![1]!)}
+            {renderKey(NUMPAD[2]![2]!)}
+            {renderKey(NUMPAD[3]![0]!)}
+            {renderKey(NUMPAD[3]![1]!)}
+            {renderKey(NUMPAD[3]![2]!)}
+            {renderKey(K("NumpadEnter", "⏎"), "row-span-2", true)}
+            {renderKey(NUMPAD[4]![0]!, "col-span-2")}
+            {renderKey(NUMPAD[4]![1]!)}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function GripDots() {
+  return (
+    <svg aria-hidden="true" width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+      <circle cx="2" cy="2" r="1.2" />
+      <circle cx="8" cy="2" r="1.2" />
+      <circle cx="2" cy="7" r="1.2" />
+      <circle cx="8" cy="7" r="1.2" />
+      <circle cx="2" cy="12" r="1.2" />
+      <circle cx="8" cy="12" r="1.2" />
+    </svg>
   );
 }

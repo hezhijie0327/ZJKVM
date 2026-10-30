@@ -201,8 +201,9 @@ input[type="range"].kvm-range::-moz-range-thumb {
   animation: kvm-pulse 1.2s ease-in-out infinite;
 }
 
-/* ── Native select, token-driven ── */
+/* ── Buttons & inputs wearing the family skin (all token-driven) ── */
 
+/* Dropdown trigger button (ui/Dropdown) */
 .kvm-select {
   height: 2.25rem;
   border-radius: 0.75rem;
@@ -211,10 +212,46 @@ input[type="range"].kvm-range::-moz-range-thumb {
   color: var(--ink);
   font-size: 0.8125rem;
   padding-inline: 0.75rem;
-  max-width: 13rem;
 }
 
 .kvm-select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.kvm-select:disabled {
+  opacity: 0.5;
+}
+
+/* Text / number input */
+.kvm-input {
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  padding-inline: 0.75rem;
+  min-width: 0;
+}
+
+.kvm-input::placeholder {
+  color: var(--ink-3);
+}
+
+.kvm-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Native number spinners off — the arrows read as chrome we don't own */
+.kvm-input::-webkit-outer-spin-button,
+.kvm-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.kvm-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

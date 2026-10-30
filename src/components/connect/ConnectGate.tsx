@@ -2,8 +2,8 @@ import { useAtomValue } from "jotai";
 import { Usb } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Select";
 import { isSecureContext, supportsSerial } from "@/lib/browser";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -88,26 +88,28 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
               {t("connect.video")}
             </label>
             <div className="flex items-center gap-2">
-              <Select
+              <Dropdown
                 id="connect-video-device"
                 label={t("connect.video")}
                 value={picked}
-                onValueChange={setPicked}
-                className="max-w-64"
-              >
-                {videoDevices.length === 0 && <option value="">{t("connect.noVideo")}</option>}
-                {videoDevices.map((device) => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label || t("connect.videoAuto")}
-                  </option>
-                ))}
-              </Select>
+                onChange={setPicked}
+                options={
+                  videoDevices.length === 0
+                    ? [{ value: "", label: t("connect.noVideo") }]
+                    : videoDevices.map((device) => ({
+                        value: device.deviceId,
+                        label: device.label || t("connect.videoAuto"),
+                      }))
+                }
+                className="w-60"
+              />
               <Button variant="primary" onClick={handleVideo} disabled={!picked || videoBusy}>
                 {videoBusy ? t("connect.connecting") : t("connect.openVideo")}
               </Button>
             </div>
           </div>
           {videoState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.video")}</p>}
+          {videoState !== "connected" && <p className={cn(META, "mt-2")}>{t("connect.authHint")}</p>}
         </div>
 
         {/* HID serial */}

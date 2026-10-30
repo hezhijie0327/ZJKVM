@@ -72,12 +72,17 @@ export const SECTION = "container mx-auto px-4 py-14 sm:py-20";
  *  toolbar popovers and settings panels (a tighter LIST_ROW sibling) */
 export const PANEL_ROW = "flex min-h-11 items-center justify-between gap-4 px-4 py-2.5";
 
+/** Column variant of PANEL_ROW for wide controls (segmented with 4+ options):
+ *  label on its own line, control takes the full row width */
+export const PANEL_COL = "flex flex-col items-stretch gap-1.5 px-4 py-3";
+
 /** Segmented control shell: warm track holding pill options */
 export const SEGMENT = "inline-flex items-center gap-0.5 rounded-full bg-surface-2 p-1";
 
-/** Segmented option (selected state = accent-strong pill, family tab language) */
+/** Segmented option (selected state = accent-strong pill, family tab language);
+ *  never wraps — a pill label always stays on one line */
 export const SEGMENT_ITEM =
-  "inline-flex h-7 items-center justify-center gap-1 rounded-full px-3 text-xs font-medium transition-colors";
+  "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full px-3 text-xs font-medium transition-colors";
 export const SEGMENT_ITEM_ON = `${SEGMENT_ITEM} bg-accent-strong text-accent-contrast`;
 export const SEGMENT_ITEM_OFF = `${SEGMENT_ITEM} text-ink-2 hover:text-ink`;
 

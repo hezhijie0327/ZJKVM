@@ -7,7 +7,13 @@ import { getOperatingSystem, supportsSerial } from "@/lib/browser";
 import { DemoDevice } from "@/lib/device/demo-device";
 import { attachDebugHook, createDemoStream } from "@/lib/device/demo-video";
 import { type HidLink, SerialDevice, setActiveLink } from "@/lib/device/device";
-import { camera, listCaptureDevices, watchDeviceChange } from "@/lib/media/camera";
+import {
+  camera,
+  ensureCameraPermission,
+  listCaptureDevices,
+  pickCaptureDevice,
+  watchDeviceChange,
+} from "@/lib/media/camera";
 import {
   audioByGroupAtom,
   connectGateOpenAtom,
@@ -42,22 +48,43 @@ export async function refreshVideoDevices(): Promise<void> {
   }
 }
 
-/** Open the capture card (defaults to the saved/picked device id). */
+/** Open the capture card. Resolves the target device robustly: without
+ *  camera permission the enumeration hides real deviceIds (the "serial
+ *  found but no video" report), so probe the permission, re-enumerate, then
+ *  fall back to a sensible default capture card. */
 export async function connectVideo(deviceId?: string): Promise<boolean> {
-  const id = deviceId ?? store.get(videoDeviceIdAtom);
-  if (!id) {
+  store.set(videoStateAtom, "connecting");
+
+  let devices = store.get(videoDevicesAtom);
+  if (devices.length === 0 || devices.every((d) => !d.label)) {
+    const granted = await ensureCameraPermission();
+    await refreshVideoDevices();
+    devices = store.get(videoDevicesAtom);
+    if (!granted) {
+      store.set(videoStateAtom, "disconnected");
+      pushToast(t("connect.cameraDenied"), "danger");
+      return false;
+    }
+  }
+
+  const requested = deviceId ?? store.get(videoDeviceIdAtom) ?? "";
+  const resolved = devices.some((d) => d.deviceId && d.deviceId === requested)
+    ? requested
+    : (pickCaptureDevice(devices)?.deviceId ?? "");
+
+  if (!resolved) {
     store.set(videoStateAtom, "disconnected");
+    pushToast(t("connect.noVideo"), "danger");
     return false;
   }
 
-  store.set(videoStateAtom, "connecting");
   try {
     const resolution = store.get(resolutionAtom);
-    const audio = store.get(audioByGroupAtom).get(groupIdOf(id))?.deviceId;
-    await camera.open(id, resolution.width, resolution.height, audio);
+    const audio = store.get(audioByGroupAtom).get(groupIdOf(resolved))?.deviceId;
+    await camera.open(resolved, resolution.width, resolution.height, audio);
     store.set(videoStreamAtom, camera.getStream());
     store.set(videoStateAtom, "connected");
-    store.set(videoDeviceIdAtom, id);
+    store.set(videoDeviceIdAtom, resolved);
     store.set(connectGateOpenAtom, false);
     return true;
   } catch (error) {

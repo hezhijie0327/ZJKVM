@@ -152,7 +152,7 @@ export function MacroModal({ open, onClose }: { open: boolean; onClose: () => vo
                   onChange={(event) => setName(event.target.value)}
                   placeholder={formatKeys(captured)}
                   aria-label="Name"
-                  className="kvm-select h-9 flex-1 min-w-32"
+                  className="kvm-input flex-1 min-w-32"
                 />
                 <Segmented
                   label={t("macro.mode")}
@@ -172,7 +172,7 @@ export function MacroModal({ open, onClose }: { open: boolean; onClose: () => vo
                       max={99}
                       value={repeat}
                       onChange={(event) => setRepeat(Math.max(1, Math.min(99, Number(event.target.value) || 1)))}
-                      className="kvm-select h-9 w-16 text-center"
+                      className="kvm-input w-16 text-center"
                     />
                   </label>
                 )}

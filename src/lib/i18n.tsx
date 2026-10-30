@@ -46,6 +46,8 @@ const en = {
   "connect.connecting": "Connecting…",
   "connect.cameraDenied": "Camera permission was denied. Enable it in the browser site settings, then retry.",
   "connect.noVideo": "No capture device found.",
+  "connect.authHint":
+    "List empty? Click “Open video” once to grant camera access — the capture card is then recognized automatically.",
   "connect.skipVideo": "Skip video",
   "nav.theme": "Theme",
   "nav.lang": "Language",
@@ -202,6 +204,7 @@ const zh: Record<TKey, string> = {
   "connect.connecting": "连接中…",
   "connect.cameraDenied": "摄像头权限被拒绝,请在浏览器站点设置中开启后重试。",
   "connect.noVideo": "未找到采集设备。",
+  "connect.authHint": "列表为空时,点击一次「打开视频」授权摄像头,采集卡即可自动识别。",
   "connect.skipVideo": "暂不用视频",
   "nav.theme": "主题",
   "nav.lang": "语言",

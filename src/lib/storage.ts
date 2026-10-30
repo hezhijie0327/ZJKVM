@@ -21,6 +21,7 @@ const KEYS = {
   statsVisible: `${PREFIX}stats-visible`,
   toolbarCollapsed: `${PREFIX}toolbar-collapsed`,
   toolbarPos: `${PREFIX}toolbar-pos`,
+  keyboardPos: `${PREFIX}keyboard-pos`,
 } as const;
 
 function get(key: string): string | null {
@@ -131,6 +132,9 @@ export const setToolbarCollapsed = (v: boolean) => set(KEYS.toolbarCollapsed, St
 
 export const getToolbarPos = () => getJSON<{ x: number; y: number }>(KEYS.toolbarPos);
 export const setToolbarPos = (v: { x: number; y: number }) => set(KEYS.toolbarPos, JSON.stringify(v));
+
+export const getKeyboardPos = () => getJSON<{ x: number; y: number }>(KEYS.keyboardPos);
+export const setKeyboardPos = (v: { x: number; y: number }) => set(KEYS.keyboardPos, JSON.stringify(v));
 
 /* Backup / restore */
 export function exportSettings(): string {

@@ -25,12 +25,11 @@ export function Navigation({ onAbout }: { onAbout: () => void }) {
   return (
     <header className="app-bar sticky top-0 z-50 border-b border-line/80 bg-bg/80 backdrop-blur-md">
       <nav className="container mx-auto flex h-14 items-center justify-between gap-3 px-4">
-        <div className="flex min-w-0 items-baseline gap-3">
+        <div className="flex min-w-0 items-baseline">
           <span className="font-serif text-xl font-semibold tracking-tight text-ink">
             ZJKVM
             <span aria-hidden="true" className="ms-[0.14em] inline-block size-[0.25em] rounded-full bg-accent-strong" />
           </span>
-          <span className="hidden truncate text-sm text-ink-2 sm:inline">{t("app.consoleTitle")}</span>
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5">

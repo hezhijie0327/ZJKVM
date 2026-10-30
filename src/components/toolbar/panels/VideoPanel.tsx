@@ -1,14 +1,14 @@
 import { useAtom, useAtomValue } from "jotai";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { ROW_LABEL } from "@/components/ui/Kbd";
 import { Segmented } from "@/components/ui/Segmented";
-import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import * as storage from "@/lib/storage";
-import { DIVIDE_LIST, META, PANEL_ROW } from "@/lib/styles";
+import { DIVIDE_LIST, META, PANEL_COL, PANEL_ROW } from "@/lib/styles";
 import {
   customResolutionsAtom,
   resolutionAtom,
@@ -94,42 +94,34 @@ export function VideoPanel() {
         <label className={ROW_LABEL} htmlFor="panel-video-device">
           {t("video.device")}
         </label>
-        <Select
+        <Dropdown
           id="panel-video-device"
           label={t("video.device")}
           value={deviceId}
-          onValueChange={handleDevice}
-          className="max-w-44"
-        >
-          {devices.length === 0 && <option value="">—</option>}
-          {devices.map((device) => (
-            <option key={device.deviceId} value={device.deviceId}>
-              {device.label || t("connect.videoAuto")}
-            </option>
-          ))}
-        </Select>
+          onChange={handleDevice}
+          options={devices.map((device) => ({
+            value: device.deviceId,
+            label: device.label || t("connect.videoAuto"),
+          }))}
+          className="w-40"
+        />
       </div>
 
       <div className={PANEL_ROW}>
-        <label className={ROW_LABEL} htmlFor="panel-video-resolution">
-          {t("video.resolution")}
-        </label>
-        <Select
-          id="panel-video-resolution"
+        <span className={ROW_LABEL}>{t("video.resolution")}</span>
+        <Dropdown
           label={t("video.resolution")}
           value={RES_KEY(resolution)}
-          onValueChange={handleResolution}
-        >
-          {allResolutions.map((r) => (
-            <option key={RES_KEY(r)} value={RES_KEY(r)}>
-              {RES_KEY(r)}
-              {customs.some((c) => RES_KEY(c) === RES_KEY(r)) ? " ★" : ""}
-            </option>
-          ))}
-        </Select>
+          onChange={handleResolution}
+          options={allResolutions.map((r) => ({
+            value: RES_KEY(r),
+            label: `${RES_KEY(r)}${customs.some((c) => RES_KEY(c) === RES_KEY(r)) ? " ★" : ""}`,
+          }))}
+          className="w-40"
+        />
       </div>
 
-      <div className={cn(PANEL_ROW, "flex-wrap")}>
+      <div className={PANEL_COL}>
         <span className={ROW_LABEL}>{t("video.customAdd")}</span>
         <div className="flex items-center gap-1.5">
           <input
@@ -139,7 +131,7 @@ export function VideoPanel() {
             placeholder={t("video.width")}
             value={customWidth}
             onChange={(event) => setCustomWidth(event.target.value)}
-            className="kvm-select h-8 w-20 text-center"
+            className="kvm-input w-24 text-center"
             min={160}
             max={7680}
           />
@@ -153,7 +145,7 @@ export function VideoPanel() {
             placeholder={t("video.height")}
             value={customHeight}
             onChange={(event) => setCustomHeight(event.target.value)}
-            className="kvm-select h-8 w-20 text-center"
+            className="kvm-input w-24 text-center"
             min={120}
             max={4320}
           />
@@ -162,15 +154,15 @@ export function VideoPanel() {
             aria-label={t("common.add")}
             title={t("common.add")}
             onClick={addCustom}
-            className="grid size-8 place-items-center rounded-full border border-line bg-surface text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             <Plus aria-hidden="true" className="size-4" />
           </button>
         </div>
+        {customNote && <p className={cn(META, "text-warning")}>{customNote}</p>}
       </div>
-      {customNote && <p className={cn(META, "px-4 pb-2 text-warning")}>{customNote}</p>}
 
-      <div className={PANEL_ROW}>
+      <div className={PANEL_COL}>
         <span className={ROW_LABEL}>{t("video.rotation")}</span>
         <Segmented
           label={t("video.rotation")}
@@ -182,10 +174,11 @@ export function VideoPanel() {
             { value: 180, label: "180°" },
             { value: 270, label: "270°" },
           ]}
+          className="w-full [&>button]:flex-1"
         />
       </div>
 
-      <div className={PANEL_ROW}>
+      <div className={PANEL_COL}>
         <span className={ROW_LABEL}>{t("video.scale")}</span>
         <Segmented
           label={t("video.scale")}
@@ -198,6 +191,7 @@ export function VideoPanel() {
             { value: "1.5", label: "150%" },
             { value: "2", label: "200%" },
           ]}
+          className="w-full [&>button]:flex-1"
         />
       </div>
 
