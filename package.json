@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "preview": "pnpm run build && wrangler dev",
+    "deploy": "pnpm run build && wrangler deploy",
     "tsc": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",
@@ -33,7 +34,8 @@
     "lighthouse": "^13.5.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "wrangler": "^4.156.0"
   },
   "packageManager": "pnpm@12.6.0"
 }
