@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ZJKVM — USB KVM 控制台</title>
+    <meta name="description" content="ZJKVM:ZJ 设计语言的 USB KVM 控制台。视频采集、键鼠注入、宏快捷键、录制截图、演示模式,全部在浏览器本地完成。" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf9f6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1b1a18" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      /* ZJKVM theme bootstrap: attach .dark + data-theme-mode before first paint
+         (same contract as the ZJ family THEME_BOOTSTRAP). */
+      (function () {
+        try {
+          var s = localStorage.getItem("zj-theme");
+          if (s !== "light" && s !== "dark") s = "auto";
+          var d = s === "dark" || (s === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var r = document.documentElement;
+          if (d) r.classList.add("dark");
+          r.setAttribute("data-theme-mode", s);
+          if (s !== "auto") {
+            var m = document.querySelectorAll('meta[name="theme-color"]');
+            if (m.length > 0) {
+              m[0].removeAttribute("media");
+              m[0].setAttribute("content", d ? "#1b1a18" : "#faf9f6");
+              for (var i = 1; i < m.length; i++) m[i].remove();
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

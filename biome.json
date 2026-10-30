@@ -1,0 +1,33 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": false },
+  "files": { "includes": ["src/**", "scripts/**", "!src/styles"] },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useImportType": "error",
+        "noNonNullAssertion": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "warn"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "useSemanticElements": "off"
+      }
+    }
+  },
+  "assist": {
+    "actions": { "source": { "organizeImports": "on" } }
+  }
+}

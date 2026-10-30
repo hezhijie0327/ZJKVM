@@ -1,0 +1,5 @@
+node_modules
+dist
+.lighthouse-archive
+*.local
+.DS_Store

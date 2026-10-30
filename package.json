@@ -1,0 +1,39 @@
+{
+  "name": "zjkvm",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ZJKVM — a USB KVM console in the ZJ design language",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tsc": "tsc --noEmit",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "icons": "node scripts/generate-icons.mjs",
+    "audit": "node scripts/audit.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "jotai": "^2.10.3",
+    "lucide-react": "^1.55.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/w3c-web-serial": "^1.0.8",
+    "@vitejs/plugin-react": "^6.1.2",
+    "chrome-launcher": "^1.2.2",
+    "lighthouse": "^13.5.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.2",
+    "vite": "^8.3.5"
+  },
+  "packageManager": "pnpm@12.6.0"
+}

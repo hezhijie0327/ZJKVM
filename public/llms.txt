@@ -1,0 +1,7 @@
+# ZJKVM
+
+> ZJKVM is a browser-based USB KVM console: it renders the HDMI capture card stream via getUserMedia and injects keyboard/mouse HID reports over Web Serial (CH9329 frames, 57600 8N1), restyled in the ZJ design language (warm paper, ink text, amber gold).
+
+- [ZJKVM console](/): The single-page KVM console — video stage, toolbar, virtual keyboard, macros, recorder. Requires a Chromium desktop browser for serial access; a hardware-free demo mode is built in.
+- [About the demo mode](/): Pick "Demo mode" in the connect gate to explore the full console against a virtual capture card with visual HID echo.
+- [ARD manifest](/.well-known/ard.json): Agentic Resource Discovery manifest describing this resource.

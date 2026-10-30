@@ -1,0 +1,14 @@
+{
+  "name": "ZJKVM — USB KVM 控制台",
+  "short_name": "ZJKVM",
+  "description": "ZJ 设计语言的 USB KVM 控制台:视频采集、键鼠注入、宏快捷键、录制截图。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1b1a18",
+  "theme_color": "#1b1a18",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

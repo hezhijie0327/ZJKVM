@@ -1,0 +1,14 @@
+/* ZJKVM design system — single CSS entry.
+   Component styling = Tailwind utilities (in TSX); the modules here only carry
+   what utilities cannot reach: tokens (family verbatim), element defaults,
+   document-level behaviors, and KVM-specific pieces (kvm.css). */
+@import "tailwindcss";
+/* Explicit source registration: automatic detection needs a project root
+   (git); without one, no utility classes are generated at all. */
+@source "../";
+@import "./tokens.css";
+@import "./base.css";
+@import "./kvm.css";
+@import "./behaviors.css";
+
+@custom-variant dark (&:where(.dark, .dark *));

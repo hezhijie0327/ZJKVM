@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "identifier": "urn:air:zjkvm:app:console",
+      "displayName": "ZJKVM — USB KVM 控制台",
+      "type": "text/html",
+      "url": "https://zjkvm.local/",
+      "description": "Browser-based USB KVM console: UVC capture via getUserMedia, CH9329 HID injection over Web Serial, macros, recorder, demo mode. ZJ design language. Update the url to the deployed origin.",
+      "representativeQueries": [
+        "ZJKVM USB KVM console",
+        "browser KVM over Web Serial CH9329",
+        "NanoKVM USB web interface alternative"
+      ]
+    }
+  ]
+}

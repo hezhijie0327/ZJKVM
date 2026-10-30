@@ -1,0 +1,255 @@
+/* Design tokens: warm paper / ink text / amber-gold palette.
+   Color tokens are registered as <color> @property (light / dark states),
+   plus Tailwind theme mappings and named keyframes.
+   Blog extensions: the --font-serif serif stack and the code palette. */
+
+/* Register the theme color tokens as <color> custom properties: when .dark
+   flips, the variables themselves interpolate on <html> (the behaviors.css
+   html transition), with a single transition driving the whole-page
+   cross-fade. Browsers without @property degrade to instant switching.
+   initial-value takes the light palette. */
+@property --bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #faf9f6;
+}
+@property --surface {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --surface-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f1efe8;
+}
+@property --line {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e6e2d7;
+}
+@property --ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #201d17;
+}
+@property --ink-2 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #6b675c;
+}
+@property --ink-3 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #716c61;
+}
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8c6800;
+}
+@property --accent-hover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #7a5c00;
+}
+@property --accent-strong {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f5c84c;
+}
+@property --accent-strong-hover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #eebd35;
+}
+@property --accent-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #faf0cf;
+}
+@property --accent-contrast {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #241d0e;
+}
+@property --highlight-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #fde68a;
+}
+@property --danger {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #dc2626;
+}
+@property --warning {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #b45309;
+}
+@property --ok {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #15803d;
+}
+/* Blog extension: the code palette (warm cream background in light / deep
+   warm black in dark, joining the palette cross-fade). Both state
+   backgrounds sit one step closer to the extreme than each shiki
+   high-contrast theme's base background (lighter in light, darker in dark),
+   so syntax colors only gain AA contrast */
+@property --code-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #fbfaf6;
+}
+@property --code-fg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #24211a;
+}
+
+/* Warm paper palette: warm neutrals + amber accents */
+:root {
+  --bg: #faf9f6;
+  --surface: #ffffff;
+  --surface-2: #f1efe8;
+  --line: #e6e2d7;
+  --ink: #201d17;
+  --ink-2: #6b675c;
+  /* Secondary text: keeps ≥ 4.5:1 on every surface it sits on (worst case surface-2 #f1efe8) */
+  --ink-3: #716c61;
+  /* Text accent doubles as small-text color (links / chips) — AA contrast in DESIGN.md */
+  --accent: #8c6800;
+  --accent-hover: #7a5c00;
+  --accent-strong: #f5c84c;
+  --accent-strong-hover: #eebd35;
+  --accent-soft: #faf0cf;
+  --accent-contrast: #241d0e;
+  --highlight-bg: #fde68a;
+  --danger: #dc2626;
+  --warning: #b45309;
+  --ok: #15803d;
+  /* Blog extension: article code blocks (warm cream background in light,
+     paired with github-light-high-contrast) */
+  --code-bg: #fbfaf6;
+  --code-fg: #24211a;
+  --shadow-card: 0 1px 2px rgb(32 29 23 / 0.05), 0 4px 16px rgb(32 29 23 / 0.05);
+  --shadow-pop: 0 4px 6px rgb(32 29 23 / 0.07), 0 12px 32px rgb(32 29 23 / 0.16);
+  /* Lightbox backdrop scrim: same value in both modes (physical black, never flips with theme) */
+  --scrim: rgb(0 0 0 / 0.6);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #1b1a18;
+  --surface: #232120;
+  --surface-2: #2c2a27;
+  --line: #38342f;
+  --ink: #eceae4;
+  --ink-2: #a8a399;
+  --ink-3: #9b958a;
+  --accent: #fec843;
+  --accent-hover: #ffd76b;
+  --accent-strong: #fec843;
+  --accent-strong-hover: #ffd76b;
+  --accent-soft: #3a3320;
+  --accent-contrast: #241d0e;
+  --highlight-bg: #4a4020;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --ok: #4ade80;
+  --code-bg: #0d0b08;
+  --code-fg: #e0d9c8;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 4px 6px rgb(0 0 0 / 0.45), 0 12px 32px rgb(0 0 0 / 0.55);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-strong-hover: var(--accent-strong-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-highlight: var(--highlight-bg);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-ok: var(--ok);
+  --color-code-bg: var(--code-bg);
+  --color-code-fg: var(--code-fg);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+
+  /* Zero webfont policy: all system font stacks, no font downloads, no
+     blocking.
+     --font-serif is a blog extension (editorial typography: serif headings
+     and body). */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", SimSun, Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --animate-fade-up: fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-fade-out: fade-out 0.16s ease-in both;
+  --animate-progress: progress 1.1s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
+  --animate-spin-slow: spin-slow 1.6s linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-100%) scaleX(0.4);
+  }
+  50% {
+    transform: translateX(30vw) scaleX(0.6);
+  }
+  100% {
+    transform: translateX(100vw) scaleX(0.4);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}

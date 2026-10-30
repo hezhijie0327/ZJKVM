@@ -1,0 +1,114 @@
+/* Document-level behaviors (deliberately un-layered, kept at the cascade
+   tail): the global reduced-motion gate, the palette cross-fade and its
+   stand-down window, and transition enhancements for native disclosure
+   elements (details / dialog). */
+
+/* details expand/collapse animation (progressive enhancement):
+   interpolate-size lets auto participate in interpolation and
+   ::details-content carries the height transition — effective on Chrome
+   131+; older browsers and reduced-motion users keep the native instant
+   toggle. */
+html {
+  interpolate-size: allow-keywords;
+}
+
+.prose details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition:
+    block-size 0.25s ease,
+    content-visibility 0.25s allow-discrete;
+}
+
+.prose details[open]::details-content {
+  block-size: auto;
+}
+
+/* Lightbox enter animation: plays once when showModal mounts [open] (panel
+   floats up slightly + backdrop fades in); the reduced-motion gate strips it
+   uniformly. */
+.lightbox[open] {
+  animation: fade-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lightbox[open]::backdrop {
+  animation: fade-in 0.2s ease-out both;
+}
+
+/* Hero scroll hint arrow: a gentle vertical bob invites scrolling; the
+   reduced-motion gate above flattens it to static. */
+@keyframes hint-bob {
+  from {
+    transform: translateY(-2px);
+  }
+  to {
+    transform: translateY(3px);
+  }
+}
+
+.animate-hint-bob {
+  animation: hint-bob 1.6s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Palette cross-fade: the color tokens are registered as <color> @property,
+   so when .dark flips, the variables interpolate on <html> and the whole
+   page follows this one and only transition (a per-element transition
+   approach stutters on heavy pages with per-frame whole-document recalcs).
+   Browsers without @property switch instantly; the reduced-motion gate
+   (0.01ms !important) collapses the fade. */
+html {
+  transition:
+    --bg 0.3s ease,
+    --surface 0.3s ease,
+    --surface-2 0.3s ease,
+    --line 0.3s ease,
+    --ink 0.3s ease,
+    --ink-2 0.3s ease,
+    --ink-3 0.3s ease,
+    --accent 0.3s ease,
+    --accent-hover 0.3s ease,
+    --accent-strong 0.3s ease,
+    --accent-strong-hover 0.3s ease,
+    --accent-soft 0.3s ease,
+    --accent-contrast 0.3s ease,
+    --highlight-bg 0.3s ease,
+    --danger 0.3s ease,
+    --warning 0.3s ease,
+    --ok 0.3s ease,
+    --code-bg 0.3s ease,
+    --code-fg 0.3s ease;
+}
+
+/* Stand-down window (lib/theme.ts adds a ~350ms class around the actual
+   class flip): elements carrying their own transition-colors (chips,
+   buttons) would chase the interpolating tokens on private timers, visibly
+   lagging the page — during the window their transitions all stand down. */
+html.zjs-palette-anim *:not(html),
+html.zjs-palette-anim :not(html)::before,
+html.zjs-palette-anim :not(html)::after {
+  transition: none !important;
+}
+
+/* Theme toggle button: the three-state icons show/hide by
+   html[data-theme-mode] (the pre-paint inline script has already set the
+   attribute, so no flash before or after hydration; toggling is driven by
+   lib/theme.ts writing the attribute). */
+[data-theme-mode] .theme-icon {
+  display: none;
+}
+[data-theme-mode="auto"] .theme-icon-auto,
+[data-theme-mode="light"] .theme-icon-light,
+[data-theme-mode="dark"] .theme-icon-dark {
+  display: block;
+}
