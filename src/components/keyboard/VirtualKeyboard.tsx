@@ -14,7 +14,7 @@ import { KeyboardReport } from "@/lib/device/keyboard-report";
 import { isModifier } from "@/lib/device/keymap";
 import { useI18n } from "@/lib/i18n";
 import * as storage from "@/lib/storage";
-import { EYEBROW, TAPE } from "@/lib/styles";
+import { EYEBROW, SEGMENT, SEGMENT_ITEM_OFF, SEGMENT_ITEM_ON, TAPE } from "@/lib/styles";
 
 interface VKey {
   code: string;
@@ -134,6 +134,93 @@ const NUMPAD: VKey[][] = [
   [K("Numpad0", "0", 2.1), K("NumpadDecimal", ".")],
 ];
 
+/* ── Mobile layers: every row fits a 390 px screen, no scrolling ── */
+
+const MOBILE_BASE: VKey[][] = [
+  [
+    K("Digit1", "1"),
+    K("Digit2", "2"),
+    K("Digit3", "3"),
+    K("Digit4", "4"),
+    K("Digit5", "5"),
+    K("Digit6", "6"),
+    K("Digit7", "7"),
+    K("Digit8", "8"),
+    K("Digit9", "9"),
+    K("Digit0", "0"),
+  ],
+  [
+    K("KeyQ", "q"),
+    K("KeyW", "w"),
+    K("KeyE", "e"),
+    K("KeyR", "r"),
+    K("KeyT", "t"),
+    K("KeyY", "y"),
+    K("KeyU", "u"),
+    K("KeyI", "i"),
+    K("KeyO", "o"),
+    K("KeyP", "p"),
+  ],
+  [
+    K("KeyA", "a"),
+    K("KeyS", "s"),
+    K("KeyD", "d"),
+    K("KeyF", "f"),
+    K("KeyG", "g"),
+    K("KeyH", "h"),
+    K("KeyJ", "j"),
+    K("KeyK", "k"),
+    K("KeyL", "l"),
+    K("Backspace", "⌫"),
+  ],
+  [
+    K("ShiftLeft", "Shift"),
+    K("KeyZ", "z"),
+    K("KeyX", "x"),
+    K("KeyC", "c"),
+    K("KeyV", "v"),
+    K("KeyB", "b"),
+    K("KeyN", "n"),
+    K("KeyM", "m"),
+    K("Comma", ","),
+    K("Period", "."),
+    K("Slash", "/"),
+  ],
+];
+
+const MOBILE_FN: VKey[][] = [
+  [K("Escape", "Esc"), K("F1"), K("F2"), K("F3"), K("F4"), K("F5"), K("F6"), K("F7")],
+  [
+    K("F8"),
+    K("F9"),
+    K("F10"),
+    K("F11"),
+    K("F12"),
+    K("PrintScreen", "PrtSc"),
+    K("ScrollLock", "ScrLk"),
+    K("Pause", "Pause"),
+  ],
+  [
+    K("Insert", "Ins"),
+    K("Home", "Home"),
+    K("PageUp", "PgUp"),
+    K("Delete", "Del"),
+    K("End", "End"),
+    K("PageDown", "PgDn"),
+  ],
+  [K("ArrowUp", "↑"), K("ArrowLeft", "←"), K("ArrowDown", "↓"), K("ArrowRight", "→")],
+];
+
+const MOBILE_NUM: VKey[][] = [
+  [K("NumLock", "Num"), K("NumpadDivide", "/"), K("NumpadMultiply", "*"), K("NumpadSubtract", "-")],
+  [K("Numpad7", "7"), K("Numpad8", "8"), K("Numpad9", "9"), K("NumpadAdd", "+")],
+  [K("Numpad4", "4"), K("Numpad5", "5"), K("Numpad6", "6"), K("NumpadEnter", "⏎")],
+  [K("Numpad1", "1"), K("Numpad2", "2"), K("Numpad3", "3"), K("NumpadDecimal", ".")],
+  [K("Numpad0", "0")],
+];
+
+type MobileLayer = "base" | "fn" | "num";
+
 interface Pos {
   x: number;
   y: number;
@@ -157,6 +244,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   const [pos, setPos] = useState<Pos | null>(() => storage.getKeyboardPos());
   const posRef = useRef<Pos | null>(pos);
   posRef.current = pos;
+  const [layer, setLayer] = useState<MobileLayer>("base");
 
   useLayoutEffect(() => {
     if (isMobile || !panelRef.current) return;
@@ -230,6 +318,10 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       return;
     }
     await send(reportRef.current.keyDown(key.code));
+    // phone-style: Fn/Num layers fall back to letters after one tap
+    if (isMobile && layer !== "base" && !isModifier(key.code)) {
+      setLayer("base");
+    }
   };
 
   /** pointerup on a key */
@@ -257,7 +349,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     };
   }, [send]);
 
-  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean) => (
+  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean) => (
     <button
       key={key.code}
       type="button"
@@ -265,7 +357,9 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       data-pressed={pressed.has(key.code) || undefined}
       className={cn("kvm-key select-none touch-none", extraClass)}
       style={{
-        ...(key.width ? { minWidth: `${key.width * 2}rem` } : undefined),
+        // inline (not a utility) on purpose: .kvm-key's unlayered min-width
+        // would beat min-w-0 and force narrow mobile rows to overflow
+        ...(skipWidth ? { minWidth: 0 } : key.width ? { minWidth: `${key.width * 2}rem` } : undefined),
         // kvm-key pins a fixed height; spanning keys must fill their grid area
         ...(fullHeight ? { height: "auto", minHeight: "100%" } : undefined),
       }}
@@ -323,53 +417,97 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {/* Centered keyboard group: main block + control/arrows + numpad.
-          Clusters hide on narrow screens; the group scrolls horizontally. */}
-      <div className="overflow-x-auto px-4 pb-4 pt-1">
-        <div className="mx-auto flex w-fit max-w-full items-start gap-4">
-          <div className="flex min-w-fit flex-col gap-1.5">
-            {ROWS.map((row) => (
-              <div key={row[0]?.code ?? row.length} className="flex gap-1.5">
-                {row.map((k) => renderKey(k))}
-              </div>
+      {/* Mobile: 10-key layers that always fit the screen — no horizontal
+          scrolling. Fn layer holds F-keys/controls, Num layer the numpad;
+          both fall back to the letter layer after a tap. */}
+      {isMobile ? (
+        <div className="px-2 pb-3 pt-1">
+          <div className={cn(SEGMENT, "mx-auto mb-1.5 w-fit")}>
+            {(
+              [
+                { id: "base", label: "ABC" },
+                { id: "fn", label: "Fn" },
+                { id: "num", label: "123" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                aria-pressed={layer === tab.id}
+                className={cn(layer === tab.id ? SEGMENT_ITEM_ON : SEGMENT_ITEM_OFF)}
+                onClick={() => setLayer(tab.id)}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
 
-          {/* Control cluster + arrows (wide screens) */}
-          <div className="hidden shrink-0 flex-col justify-between gap-1.5 md:flex">
-            <div className="grid grid-cols-3 gap-1.5">{CONTROL_KEYS.map((k) => renderKey(k))}</div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <span />
-              {renderKey(ARROWS[0]!)}
-              <span />
-              {renderKey(ARROWS[1]!)}
-              {renderKey(ARROWS[2]!)}
-              {renderKey(ARROWS[3]!)}
-            </div>
-          </div>
-
-          {/* Numpad (wide screens) */}
-          <div className="hidden shrink-0 grid-cols-4 gap-1.5 md:grid">
-            {renderKey(NUMPAD[0]![0]!)}
-            {renderKey(NUMPAD[0]![1]!)}
-            {renderKey(NUMPAD[0]![2]!)}
-            {renderKey(NUMPAD[0]![3]!)}
-            {renderKey(NUMPAD[1]![0]!)}
-            {renderKey(NUMPAD[1]![1]!)}
-            {renderKey(NUMPAD[1]![2]!)}
-            {renderKey(NUMPAD[1]![3]!, "row-span-2", true)}
-            {renderKey(NUMPAD[2]![0]!)}
-            {renderKey(NUMPAD[2]![1]!)}
-            {renderKey(NUMPAD[2]![2]!)}
-            {renderKey(NUMPAD[3]![0]!)}
-            {renderKey(NUMPAD[3]![1]!)}
-            {renderKey(NUMPAD[3]![2]!)}
-            {renderKey(K("NumpadEnter", "⏎"), "row-span-2", true)}
-            {renderKey(NUMPAD[4]![0]!, "col-span-2")}
-            {renderKey(NUMPAD[4]![1]!)}
+          <div className="flex flex-col gap-1.5">
+            {(layer === "base" ? MOBILE_BASE : layer === "fn" ? MOBILE_FN : MOBILE_NUM).map((row, index) => (
+              <div key={index} className="flex gap-1">
+                {row.map((k) => renderKey(k, "min-w-0 flex-1 h-10", false, true))}
+              </div>
+            ))}
+            {layer === "base" && (
+              <div className="flex gap-1">
+                {renderKey(K("ControlLeft", "Ctrl"), "min-w-0 flex-1 h-10", false, true)}
+                {renderKey(K("MetaLeft", "Win"), "min-w-0 flex-1 h-10", false, true)}
+                {renderKey(K("AltLeft", "Alt"), "min-w-0 flex-1 h-10", false, true)}
+                {renderKey(K("Space", ""), "min-w-0 flex-[3] h-10", false, true)}
+                {renderKey(K("Enter", "⏎"), "min-w-0 flex-1 h-10", false, true)}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      ) : (
+        /* Desktop: centered keyboard group — main block + control/arrows +
+            numpad clusters. */
+        <div className="overflow-x-auto px-4 pb-4 pt-1">
+          <div className="mx-auto flex w-fit max-w-full items-start gap-4">
+            <div className="flex min-w-fit flex-col gap-1.5">
+              {ROWS.map((row) => (
+                <div key={row[0]?.code ?? row.length} className="flex gap-1.5">
+                  {row.map((k) => renderKey(k))}
+                </div>
+              ))}
+            </div>
+
+            {/* Control cluster + arrows (wide screens) */}
+            <div className="hidden shrink-0 flex-col justify-between gap-1.5 md:flex">
+              <div className="grid grid-cols-3 gap-1.5">{CONTROL_KEYS.map((k) => renderKey(k))}</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <span />
+                {renderKey(ARROWS[0]!)}
+                <span />
+                {renderKey(ARROWS[1]!)}
+                {renderKey(ARROWS[2]!)}
+                {renderKey(ARROWS[3]!)}
+              </div>
+            </div>
+
+            {/* Numpad (wide screens) */}
+            <div className="hidden shrink-0 grid-cols-4 gap-1.5 md:grid">
+              {renderKey(NUMPAD[0]![0]!)}
+              {renderKey(NUMPAD[0]![1]!)}
+              {renderKey(NUMPAD[0]![2]!)}
+              {renderKey(NUMPAD[0]![3]!)}
+              {renderKey(NUMPAD[1]![0]!)}
+              {renderKey(NUMPAD[1]![1]!)}
+              {renderKey(NUMPAD[1]![2]!)}
+              {renderKey(NUMPAD[1]![3]!, "row-span-2", true)}
+              {renderKey(NUMPAD[2]![0]!)}
+              {renderKey(NUMPAD[2]![1]!)}
+              {renderKey(NUMPAD[2]![2]!)}
+              {renderKey(NUMPAD[3]![0]!)}
+              {renderKey(NUMPAD[3]![1]!)}
+              {renderKey(NUMPAD[3]![2]!)}
+              {renderKey(K("NumpadEnter", "⏎"), "row-span-2", true)}
+              {renderKey(NUMPAD[4]![0]!, "col-span-2")}
+              {renderKey(NUMPAD[4]![1]!)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
