@@ -18,7 +18,7 @@ import {
   videoDeviceIdAtom,
   videoDevicesAtom,
 } from "@/state/atoms";
-import { applyResolution, connectVideo } from "@/state/connection";
+import { applyResolution, connectVideo, probeVideoDevices } from "@/state/connection";
 import type { Resolution, Rotation } from "@/types";
 
 const PRESETS: Resolution[] = [
@@ -99,6 +99,7 @@ export function VideoPanel() {
           label={t("video.device")}
           value={deviceId}
           onChange={handleDevice}
+          onOpen={() => void probeVideoDevices()}
           options={devices.map((device) => ({
             value: device.deviceId,
             label: device.label || t("connect.videoAuto"),

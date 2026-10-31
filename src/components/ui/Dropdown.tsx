@@ -14,6 +14,8 @@ export interface DropdownProps {
   value: string;
   options: DropdownOption[];
   onChange: (value: string) => void;
+  /** Called once when the menu opens (e.g. to probe permissions / refresh the list). */
+  onOpen?: () => void;
   className?: string;
   menuClassName?: string;
   disabled?: boolean;
@@ -23,7 +25,17 @@ export interface DropdownProps {
 /** Custom select wearing the family skin: kvm-select trigger button + CARD
  *  popover list (LIST_ROW rows, accent check on the selected option).
  *  Replaces every native <select> — the OS dropdown sheet broke the style. */
-export function Dropdown({ label, value, options, onChange, className, menuClassName, disabled, id }: DropdownProps) {
+export function Dropdown({
+  label,
+  value,
+  options,
+  onChange,
+  onOpen,
+  className,
+  menuClassName,
+  disabled,
+  id,
+}: DropdownProps) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const current = options.find((option) => option.value === value);
@@ -39,7 +51,12 @@ export function Dropdown({ label, value, options, onChange, className, menuClass
         aria-label={label}
         title={label}
         disabled={disabled || options.length === 0}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) {
+            onOpen?.();
+          }
+          setOpen((o) => !o);
+        }}
         className="kvm-select inline-flex w-full items-center justify-between gap-2"
       >
         <span className="min-w-0 flex-1 truncate text-left">{current?.label ?? "—"}</span>

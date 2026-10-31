@@ -1,5 +1,5 @@
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ConnectGate } from "@/components/connect/ConnectGate";
 import { MouseInput } from "@/components/input/AbsoluteMouse";
 import { PhysicalKeyboard } from "@/components/input/PhysicalKeyboard";
@@ -13,6 +13,7 @@ import { mouseJiggler } from "@/lib/mouse-jiggler";
 import * as storage from "@/lib/storage";
 import { watchSystemTheme } from "@/lib/theme";
 import {
+  aboutOpenAtom,
   connectGateOpenAtom,
   customResolutionsAtom,
   demoModeAtom,
@@ -36,7 +37,8 @@ import {
 import { connectVideo, refreshVideoDevices, watchVideoHotplug } from "@/state/connection";
 
 export default function App() {
-  const [aboutOpen, setAboutOpen] = useState(false);
+  const aboutOpen = useAtomValue(aboutOpenAtom);
+  const setAboutOpen = useSetAtom(aboutOpenAtom);
 
   const gateOpen = useAtomValue(connectGateOpenAtom);
   const setGateOpen = useSetAtom(connectGateOpenAtom);
@@ -122,7 +124,7 @@ export default function App() {
         Video
       </a>
 
-      <Navigation onAbout={() => setAboutOpen(true)} />
+      <Navigation />
 
       <Stage />
 

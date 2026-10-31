@@ -1,4 +1,5 @@
 import { useAtomValue } from "jotai";
+import { X } from "lucide-react";
 import { Kbd } from "@/components/ui/Kbd";
 import { Modal } from "@/components/ui/Modal";
 import { supportsSerial } from "@/lib/browser";
@@ -17,6 +18,15 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
     <Modal open={open} onClose={onClose} label={t("about.title")}>
       <div className="relative border-b border-line/70 px-6 pt-6 pb-5">
         <span aria-hidden="true" className={cn(TAPE, "-top-2 left-8 w-20 -rotate-6 bg-accent-soft/80")} />
+        <button
+          type="button"
+          aria-label={t("common.close")}
+          title={t("common.close")}
+          onClick={onClose}
+          className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <X aria-hidden="true" className="size-4" />
+        </button>
         <p className={EYEBROW}>ZJKVM 1.0</p>
         <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink">{t("about.title")}</h2>
       </div>

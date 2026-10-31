@@ -279,7 +279,7 @@ export function Toolbar() {
     audio: <AudioPanel />,
     keyboard: <KeyboardPanel />,
     mouse: <MousePanel />,
-    settings: <SettingsPanel onAbout={() => setActivePanel(null)} />,
+    settings: <SettingsPanel />,
   };
 
   if (collapsed) {
@@ -395,7 +395,7 @@ export function Toolbar() {
           anchorRef={settingsButtonRef}
           className="w-80"
         >
-          <SettingsPanel onAbout={() => setActivePanel(null)} />
+          <SettingsPanel />
         </Popover>
       </div>
       {recording && <span className="sr-only" aria-live="polite" />}

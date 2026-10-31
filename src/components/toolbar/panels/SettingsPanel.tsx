@@ -7,15 +7,20 @@ import { useI18n } from "@/lib/i18n";
 import { downloadBlob } from "@/lib/recorder";
 import * as storage from "@/lib/storage";
 import { DIVIDE_LIST, META, PANEL_ROW } from "@/lib/styles";
-import { connectGateOpenAtom, toolbarPosAtom } from "@/state/atoms";
+import { aboutOpenAtom, connectGateOpenAtom, toolbarPosAtom } from "@/state/atoms";
 import { disconnectAll } from "@/state/connection";
 import { pushToast } from "@/state/toast";
 
-export function SettingsPanel({ onAbout }: { onAbout: () => void }) {
+export function SettingsPanel() {
   const { t } = useI18n();
   const setGateOpen = useSetAtom(connectGateOpenAtom);
   const setToolbarPos = useSetAtom(toolbarPosAtom);
+  const setAboutOpen = useSetAtom(aboutOpenAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const openAbout = () => {
+    setAboutOpen(true);
+  };
 
   const exportSettings = () => {
     const json = storage.exportSettings();
@@ -96,7 +101,7 @@ export function SettingsPanel({ onAbout }: { onAbout: () => void }) {
 
       <div className={cn(PANEL_ROW, "flex-wrap")}>
         <span className={ROW_LABEL}>{t("settings.about")}</span>
-        <Button className="h-9 px-4" onClick={onAbout}>
+        <Button className="h-9 px-4" onClick={openAbout}>
           {t("nav.help")}
         </Button>
       </div>

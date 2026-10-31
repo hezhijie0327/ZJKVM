@@ -1,5 +1,5 @@
 import { useAtom } from "jotai";
-import { Ban, Circle, Play, Plus, Square } from "lucide-react";
+import { Ban, Circle, Play, Plus, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
@@ -88,6 +88,15 @@ export function MacroModal({ open, onClose }: { open: boolean; onClose: () => vo
     <Modal open={open} onClose={onClose} label={t("macro.title")} className="max-w-xl">
       <div className="relative border-b border-line/70 px-6 pt-6 pb-5">
         <span aria-hidden="true" className={cn(TAPE, "-top-2 right-10 w-20 rotate-6 bg-accent-soft/80")} />
+        <button
+          type="button"
+          aria-label={t("common.close")}
+          title={t("common.close")}
+          onClick={onClose}
+          className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <X aria-hidden="true" className="size-4" />
+        </button>
         <p className={EYEBROW}>MACRO</p>
         <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink">{t("macro.title")}</h2>
         <p className={cn(META, "mt-1.5")}>{t("macro.sysHint")}</p>

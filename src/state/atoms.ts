@@ -67,3 +67,4 @@ export const toolbarCollapsedAtom = atom(storage.getToolbarCollapsed());
 export const toolbarPosAtom = atom(storage.getToolbarPos() ?? { x: 0, y: 0 });
 export const statsVisibleAtom = atom(storage.getStatsVisible() ?? true);
 export const connectGateOpenAtom = atom(false);
+export const aboutOpenAtom = atom(false);

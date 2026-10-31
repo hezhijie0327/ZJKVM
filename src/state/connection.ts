@@ -48,6 +48,13 @@ export async function refreshVideoDevices(): Promise<void> {
   }
 }
 
+/** Probe camera permission and re-enumerate — device lists are anonymous
+ *  (or empty) until the grant, so device dropdowns call this on open. */
+export async function probeVideoDevices(): Promise<void> {
+  await ensureCameraPermission();
+  await refreshVideoDevices();
+}
+
 /** Open the capture card. Resolves the target device robustly: without
  *  camera permission the enumeration hides real deviceIds (the "serial
  *  found but no video" report), so probe the permission, re-enumerate, then

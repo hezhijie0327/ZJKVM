@@ -1,3 +1,4 @@
+import { useSetAtom } from "jotai";
 import { Info, Languages, Moon, Sun, SunMoon } from "lucide-react";
 import { useRef, useState } from "react";
 import { IconButton } from "@/components/ui/IconButton";
@@ -6,10 +7,12 @@ import { cn } from "@/lib/cn";
 import { type Lang, useI18n } from "@/lib/i18n";
 import { LIST_ROW } from "@/lib/styles";
 import { nextThemeStyle, readThemeStyle, setThemeStyle } from "@/lib/theme";
+import { aboutOpenAtom } from "@/state/atoms";
 
 /** Navigation bar: sticky glass, serif wordmark with the family golden period. */
-export function Navigation({ onAbout }: { onAbout: () => void }) {
+export function Navigation() {
   const { t, lang, setLang } = useI18n();
+  const setAboutOpen = useSetAtom(aboutOpenAtom);
   const [langOpen, setLangOpen] = useState(false);
   const langAnchorRef = useRef<HTMLButtonElement>(null);
 
@@ -78,7 +81,7 @@ export function Navigation({ onAbout }: { onAbout: () => void }) {
             </Popover>
           </div>
 
-          <IconButton label={t("nav.help")} onClick={onAbout}>
+          <IconButton label={t("nav.help")} onClick={() => setAboutOpen(true)}>
             <Info aria-hidden="true" className="size-4" />
           </IconButton>
         </div>

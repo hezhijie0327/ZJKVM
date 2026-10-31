@@ -16,7 +16,7 @@ import {
   videoDevicesAtom,
   videoStateAtom,
 } from "@/state/atoms";
-import { connectVideo, openSerial, refreshVideoDevices, startDemo } from "@/state/connection";
+import { connectVideo, openSerial, probeVideoDevices, refreshVideoDevices, startDemo } from "@/state/connection";
 
 /** Connect gate: capture card + HID serial + demo escape hatch. Auto-opens
  *  when nothing is connected (same contract as the original DeviceModal, but
@@ -93,6 +93,7 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
                 label={t("connect.video")}
                 value={picked}
                 onChange={setPicked}
+                onOpen={() => void probeVideoDevices()}
                 options={
                   videoDevices.length === 0
                     ? [{ value: "", label: t("connect.noVideo") }]
