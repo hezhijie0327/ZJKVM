@@ -58,9 +58,12 @@ export async function probeVideoDevices(): Promise<void> {
 /** Open the capture card. Resolves the target device robustly: without
  *  camera permission the enumeration hides real deviceIds (the "serial
  *  found but no video" report), so probe the permission, re-enumerate, then
- *  fall back to a sensible default capture card. */
+ *  fall back to a sensible default capture card. The device lists are
+ *  refreshed on every connect — audio inputs are also anonymous until the
+ *  mic grant, so a stale map would silently drop the capture card's audio. */
 export async function connectVideo(deviceId?: string): Promise<boolean> {
   store.set(videoStateAtom, "connecting");
+  await refreshVideoDevices();
 
   let devices = store.get(videoDevicesAtom);
   if (devices.length === 0 || devices.every((d) => !d.label)) {

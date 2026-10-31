@@ -89,7 +89,7 @@ export async function ensureCameraPermission(): Promise<boolean> {
 export function pickCaptureDevice(devices: MediaDevice[]): MediaDevice | null {
   if (devices.length === 0) return null;
   return (
-    devices.find((d) => /hdmi|capture|采集|usb video|ms21|macrosilicon|avermedia|elgato/i.test(d.label)) ??
+    devices.find((d) => /hdmi|capture|采集|usb|ms21|macrosilicon|avermedia|elgato|nanokvm/i.test(d.label)) ??
     devices[0] ??
     null
   );

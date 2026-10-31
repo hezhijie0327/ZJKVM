@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { getActiveLink } from "@/lib/device/device";
 import { sendQuick, typeText } from "@/lib/hid";
 import { useI18n } from "@/lib/i18n";
-import { DIVIDE_LIST, META, PANEL_ROW } from "@/lib/styles";
+import { DIVIDE_LIST, META, PANEL_COL, PANEL_ROW } from "@/lib/styles";
 import { demoModeAtom, keyboardEnabledAtom, serialStateAtom, virtualKeyboardOpenAtom } from "@/state/atoms";
 import { pushToast } from "@/state/toast";
 
@@ -73,16 +73,16 @@ export function KeyboardPanel() {
         <Switch checked={virtualOpen} onChange={setVirtualOpen} label={t("kb.virtual")} />
       </div>
 
-      <div className={cn(PANEL_ROW, "flex-wrap")}>
+      <div className={PANEL_COL}>
         <span className={ROW_LABEL}>{t("kb.quick")}</span>
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {QUICK_KEYS.map((quick) => (
             <button
               key={quick.label}
               type="button"
               disabled={!linked}
               onClick={() => sendQuick(quick.keys)}
-              className="kvm-key h-8"
+              className="kvm-key h-9 w-full"
             >
               {quick.label}
             </button>

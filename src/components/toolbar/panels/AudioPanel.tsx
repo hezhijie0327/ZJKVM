@@ -9,7 +9,7 @@ import { camera } from "@/lib/media/camera";
 import { requestPermission } from "@/lib/media/permission";
 import { DIVIDE_LIST, META, PANEL_ROW } from "@/lib/styles";
 import { mutedAtom, videoDeviceIdAtom, videoStateAtom, volumeAtom } from "@/state/atoms";
-import { connectVideo } from "@/state/connection";
+import { connectVideo, probeVideoDevices } from "@/state/connection";
 
 export function AudioPanel() {
   const { t } = useI18n();
@@ -22,8 +22,13 @@ export function AudioPanel() {
 
   const requestMic = async () => {
     const granted = await requestPermission("microphone");
-    if (granted && videoState === "connected") {
-      // reopen the stream so the paired capture-card audio track comes along
+    if (!granted) {
+      return;
+    }
+    // audio inputs are anonymous until the mic grant — re-enumerate, then
+    // reopen the stream so the paired capture-card audio track comes along
+    await probeVideoDevices();
+    if (videoState === "connected") {
       await connectVideo(deviceId || undefined);
     }
   };
