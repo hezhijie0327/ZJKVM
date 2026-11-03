@@ -443,8 +443,8 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            {(layer === "base" ? MOBILE_BASE : layer === "fn" ? MOBILE_FN : MOBILE_NUM).map((row, index) => (
-              <div key={index} className="flex gap-1">
+            {(layer === "base" ? MOBILE_BASE : layer === "fn" ? MOBILE_FN : MOBILE_NUM).map((row) => (
+              <div key={row[0]?.code ?? row.length} className="flex gap-1">
                 {row.map((k) => renderKey(k, "min-w-0 flex-1 h-10", false, true))}
               </div>
             ))}

@@ -11,6 +11,7 @@
 import { existsSync, statSync as fsStatSync, readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createServer as createNetServer } from "node:net";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { brotliCompressSync, gzipSync } from "node:zlib";
@@ -124,6 +125,18 @@ function resolveBrowserPath() {
   }
 }
 
+/** Grab a free TCP port from the OS by binding to port 0, then releasing it. */
+function reserveFreePort() {
+  return new Promise((resolvePort, rejectPort) => {
+    const srv = createNetServer();
+    srv.once("error", rejectPort);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolvePort(port));
+    });
+  });
+}
+
 async function main() {
   if (!existsSync(join(OUT_DIR, "index.html"))) {
     throw new Error("dist/ missing or not built — run pnpm build first");
@@ -151,7 +164,11 @@ async function main() {
     const lighthouse = (await import("lighthouse")).default;
     const config = MOBILE ? undefined : (await import("lighthouse/core/config/desktop-config.js")).default;
 
-    chrome = await launch({ chromeFlags: ["--headless=new"] });
+    // Edge 156+ on Windows no longer echoes "DevTools listening on ws://…" to
+    // stderr, which is how chrome-launcher discovers a port-0 launch. Reserve a
+    // concrete free port ourselves so the launcher falls back to port polling.
+    const debugPort = await reserveFreePort();
+    chrome = await launch({ port: debugPort, chromeFlags: ["--headless=new"] });
     const port = chrome.port;
     const url = `${BASE}/`;
     console.log(`\n/${MOBILE ? "  (mobile)" : ""}`);
