@@ -13,7 +13,8 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "icons": "node scripts/generate-icons.mjs",
-    "audit": "node scripts/audit.mjs"
+    "audit": "node scripts/audit.mjs",
+    "bump-compat": "node scripts/bump-compat-date.cjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
