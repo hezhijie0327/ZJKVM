@@ -18,6 +18,8 @@ import {
   videoStreamAtom,
   volumeAtom,
 } from "@/state/atoms";
+import { connectVideo } from "@/state/connection";
+import { pushToast } from "@/state/toast";
 
 /** The KVM stage: full-bleed ruled-paper surface, capture stream letterboxed
  *  in the middle, toolbar + stats floating above. */
@@ -47,6 +49,39 @@ export function Stage() {
       videoEl.play().catch(() => {});
     }
   }, [videoEl, stream]);
+
+  /* USB capture dongles re-enumerate under load (weak power/hub) — the track
+     "ends" and the picture dies silently. Reconnect once on the spot and
+     once after a grace period; tell the user either way. */
+  useEffect(() => {
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+
+    let retryTimer: number | null = null;
+    let attempts = 0;
+    const onGone = () => {
+      attempts += 1;
+      if (attempts > 2) {
+        pushToast(t("toast.videoLostGiveUp"), "danger");
+        return;
+      }
+      pushToast(t("toast.videoLost"));
+      retryTimer = window.setTimeout(
+        () => {
+          void connectVideo();
+        },
+        attempts === 1 ? 400 : 2500,
+      );
+    };
+    track.addEventListener("ended", onGone);
+    track.addEventListener("mute", onGone);
+    return () => {
+      track.removeEventListener("ended", onGone);
+      track.removeEventListener("mute", onGone);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
+  }, [stream, t]);
 
   useEffect(() => {
     if (!videoEl) return;

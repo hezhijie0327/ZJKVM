@@ -131,13 +131,11 @@ export async function openSerial(): Promise<boolean> {
   store.set(serialStateAtom, "connecting");
   const device = new SerialDevice();
   try {
-    await device.open(() => {
-      store.set(serialStateAtom, "disconnected");
-      stopLedPolling();
-      pushToast(t("toast.disconnected"), "danger");
-    });
+    await device.open(() => onSerialLost());
     serialDevice = device;
     setActiveLink(device);
+    serialWanted = true;
+    armSerialRebind();
     store.set(serialStateAtom, "connected");
     store.set(connectGateOpenAtom, false);
     pushToast(t("toast.connected"));
@@ -152,6 +150,81 @@ export async function openSerial(): Promise<boolean> {
     store.set(serialStateAtom, "disconnected");
     void error;
     return false;
+  }
+}
+
+/* ── Serial auto-rebind ──────────────────────────────────────────────────
+   The CH9329 re-enumerates itself shortly after the port opens (classic
+   USB-CDC behavior), so macOS tears the /dev node down and Chromium fires
+   `disconnect`. The port is already authorized though: listen for the
+   matching `connect` and reopen it silently — no second chooser. A burst
+   of instant re-disconnects means the rebind itself re-triggers the
+   re-enumeration; give up after five and let the user reconnect by hand. */
+
+let serialWanted = false;
+let rebindListener: ((event: Event) => void) | null = null;
+let rebinding = false;
+let reconnectBurst = 0;
+let lastLossAt = 0;
+
+function onSerialLost(): void {
+  serialDevice = null;
+  setActiveLink(null);
+  store.set(serialStateAtom, "disconnected");
+  stopLedPolling();
+  if (serialWanted) {
+    const now = Date.now();
+    reconnectBurst = now - lastLossAt < 2000 ? reconnectBurst + 1 : 0;
+    lastLossAt = now;
+    if (reconnectBurst >= 5) {
+      serialWanted = false;
+      disarmSerialRebind();
+      pushToast(t("toast.disconnected"), "danger");
+      return;
+    }
+  }
+  pushToast(t("toast.disconnected"), "danger");
+}
+
+function armSerialRebind(): void {
+  if (rebindListener || !supportsSerial()) return;
+  rebindListener = (event: Event) => {
+    if (!serialWanted || store.get(serialStateAtom) === "connected" || rebinding) return;
+    const port = event.target as SerialPort | null;
+    void rebindSerial(port);
+  };
+  navigator.serial.addEventListener("connect", rebindListener);
+}
+
+function disarmSerialRebind(): void {
+  if (rebindListener) {
+    navigator.serial.removeEventListener("connect", rebindListener);
+    rebindListener = null;
+  }
+  reconnectBurst = 0;
+}
+
+async function rebindSerial(port: SerialPort | null): Promise<void> {
+  if (rebinding) return;
+  rebinding = true;
+  try {
+    store.set(serialStateAtom, "connecting");
+    if (!port) {
+      const ports = await navigator.serial.getPorts();
+      port = ports[0] ?? null;
+    }
+    if (!port) throw new Error("no authorized port");
+    const device = new SerialDevice();
+    await device.openPort(port, () => onSerialLost());
+    serialDevice = device;
+    setActiveLink(device);
+    store.set(serialStateAtom, "connected");
+    pushToast(t("toast.serialReconnected"));
+    startLedPolling();
+  } catch {
+    store.set(serialStateAtom, "disconnected");
+  } finally {
+    rebinding = false;
   }
 }
 
@@ -178,6 +251,8 @@ function stopDemo(): void {
 
 /** Tear everything down. */
 export async function disconnectAll(): Promise<void> {
+  serialWanted = false; // user-initiated — the rebind must stay quiet
+  disarmSerialRebind();
   stopLedPolling();
   stopDemo();
   setActiveLink(null);

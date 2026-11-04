@@ -1,8 +1,9 @@
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { STATUS_CHIP } from "@/lib/styles";
 import {
+  connectGateOpenAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
@@ -46,7 +47,10 @@ function formatDuration(totalSeconds: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-/** Bottom status strip: connection chips, lock LEDs, firmware, stats, rec timer. */
+/** Bottom status strip: connection chips, lock LEDs, firmware, stats, rec timer.
+ *  Video/serial chips double as reconnect affordances while disconnected —
+ *  clicking one opens the connect gate (the gate auto-closes on success,
+ *  which would otherwise leave no way to connect the serial port alone). */
 export function Statusbar() {
   const { t } = useI18n();
   const videoState = useAtomValue(videoStateAtom);
@@ -57,30 +61,43 @@ export function Statusbar() {
   const recording = useAtomValue(recordingAtom);
   const duration = useAtomValue(recordingDurationAtom);
   const stats = useAtomValue(videoStatsAtom);
+  const setGateOpen = useSetAtom(connectGateOpenAtom);
 
   return (
     <footer className="shrink-0 border-t border-line/80 bg-bg">
       <div className="flex h-9 items-center justify-between gap-3 overflow-x-auto px-4 font-mono text-[11px] whitespace-nowrap text-ink-3">
         <div className="flex items-center gap-1.5">
-          <span
-            className={cn(STATUS_CHIP, videoState === "connected" && "border-ok/60 text-ok")}
-            title={t("status.video")}
+          <button
+            type="button"
+            className={cn(
+              STATUS_CHIP,
+              videoState === "connected" && "border-ok/60 text-ok",
+              videoState !== "connected" && "transition-colors hover:border-ink-3 hover:text-ink",
+            )}
+            title={videoState === "connected" ? t("status.video") : t("connect.title")}
+            onClick={() => videoState !== "connected" && setGateOpen(true)}
           >
             <span
               aria-hidden="true"
               className={cn("size-1.5 rounded-full", videoState === "connected" ? "bg-ok" : "bg-line")}
             />
             {t("status.video")}
-          </span>
+          </button>
           {demo ? (
             <span className={cn(STATUS_CHIP, "border-accent text-accent")} title={t("status.demo")}>
               <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
               {t("status.demo")}
             </span>
           ) : (
-            <span
-              className={cn(STATUS_CHIP, serialState === "connected" && "border-ok/60 text-ok")}
-              title={t("status.serial")}
+            <button
+              type="button"
+              className={cn(
+                STATUS_CHIP,
+                serialState === "connected" && "border-ok/60 text-ok",
+                serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
+              )}
+              title={serialState === "disconnected" ? t("connect.title") : t("status.serial")}
+              onClick={() => serialState === "disconnected" && setGateOpen(true)}
             >
               <span
                 aria-hidden="true"
@@ -90,7 +107,7 @@ export function Statusbar() {
                 )}
               />
               {t("status.serial")}
-            </span>
+            </button>
           )}
           <LedRow leds={leds} />
           {firmware && <span className="hidden sm:inline">{t("status.fw", { v: firmware })}</span>}

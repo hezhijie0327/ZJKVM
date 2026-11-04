@@ -160,7 +160,10 @@ const en = {
   "toast.connected": "Device connected",
   "toast.disconnected": "Device disconnected",
   "toast.videoFail": "Could not open the capture card",
+  "toast.videoLost": "Video signal lost — reconnecting…",
+  "toast.videoLostGiveUp": "Video signal lost — click the status bar to reconnect",
   "toast.serialFail": "Could not open the serial port",
+  "toast.serialReconnected": "Serial reconnected automatically",
   "toast.macSent": "{name} sent",
 } as const;
 
@@ -317,7 +320,10 @@ const zh: Record<TKey, string> = {
   "toast.connected": "设备已连接",
   "toast.disconnected": "设备连接已断开",
   "toast.videoFail": "无法打开采集卡",
+  "toast.videoLost": "视频信号丢失,正在自动重连…",
+  "toast.videoLostGiveUp": "视频信号丢失——点击状态栏视频可重连",
   "toast.serialFail": "串口打开失败",
+  "toast.serialReconnected": "串口已自动重连",
   "toast.macSent": "已发送 {name}",
 };
 

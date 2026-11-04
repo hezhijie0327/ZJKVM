@@ -28,6 +28,12 @@ export class SerialDevice implements HidLink {
   async open(onDisconnected?: () => void): Promise<void> {
     // requestPort() must run inside a user gesture — callers guarantee that.
     const port = await navigator.serial.requestPort();
+    await this.openPort(port, onDisconnected);
+  }
+
+  /** Reopen an already-granted port without the chooser (serial rebind after
+   *  the CH9329 re-enumerates itself mid-session). */
+  async openPort(port: SerialPort, onDisconnected?: () => void): Promise<void> {
     await this.serial.init({
       port: port as unknown as Parameters<SerialLink["init"]>[0]["port"],
       onDisconnect: () => {
