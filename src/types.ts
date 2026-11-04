@@ -15,17 +15,6 @@ export interface MediaDevice {
 export type VideoState = "disconnected" | "connecting" | "connected";
 export type SerialState = "unsupported" | "disconnected" | "connecting" | "connected";
 
-export interface ShortcutMacro {
-  id: string;
-  name: string;
-  /** event.code list, ordered */
-  keys: string[];
-  /** chord = all keys held together; sequence = press/release one by one */
-  mode: "chord" | "sequence";
-  /** repeat count for sequence mode (BIOS boot-key spam etc.) */
-  repeat: number;
-}
-
 export interface LedState {
   num: boolean;
   caps: boolean;

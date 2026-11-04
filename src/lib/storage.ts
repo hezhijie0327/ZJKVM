@@ -1,7 +1,7 @@
 /** Typed localStorage settings store. All keys live under the zjkvm-*
  *  namespace; export()/import() round-trip every key for backup/restore. */
 
-import type { Resolution, Rotation, ShortcutMacro } from "@/types";
+import type { Resolution, Rotation } from "@/types";
 
 const PREFIX = "zjkvm-";
 
@@ -17,7 +17,6 @@ const KEYS = {
   wheelDirection: `${PREFIX}wheel-direction`,
   wheelInterval: `${PREFIX}wheel-interval`,
   jiggler: `${PREFIX}mouse-jiggler`,
-  macros: `${PREFIX}macros`,
   statsVisible: `${PREFIX}stats-visible`,
   toolbarCollapsed: `${PREFIX}toolbar-collapsed`,
   toolbarPos: `${PREFIX}toolbar-pos`,
@@ -116,10 +115,6 @@ export const setWheelInterval = (v: number) => set(KEYS.wheelInterval, String(v)
 export const getJiggler = () => get(KEYS.jiggler);
 export const setJiggler = (v: "enable" | "disable") => set(KEYS.jiggler, v);
 
-/* Macros */
-export const getMacros = (): ShortcutMacro[] | null => getJSON<ShortcutMacro[]>(KEYS.macros);
-export const setMacros = (v: ShortcutMacro[]) => set(KEYS.macros, JSON.stringify(v));
-
 /* UI */
 export function getStatsVisible(): boolean | null {
   const raw = get(KEYS.statsVisible);
@@ -135,39 +130,3 @@ export const setToolbarPos = (v: { x: number; y: number }) => set(KEYS.toolbarPo
 
 export const getKeyboardPos = () => getJSON<{ x: number; y: number }>(KEYS.keyboardPos);
 export const setKeyboardPos = (v: { x: number; y: number }) => set(KEYS.keyboardPos, JSON.stringify(v));
-
-/* Backup / restore */
-export function exportSettings(): string {
-  const data: Record<string, string | null> = {};
-  for (const key of Object.values(KEYS)) {
-    data[key] = get(key);
-  }
-  return JSON.stringify({ app: "zjkvm", version: 1, settings: data }, null, 2);
-}
-
-/** @returns number of imported keys, or null when the payload is not a ZJKVM backup */
-export function importSettings(json: string): number | null {
-  try {
-    const parsed = JSON.parse(json) as { app?: string; settings?: Record<string, string | null> };
-    if (parsed.app !== "zjkvm" || typeof parsed.settings !== "object" || parsed.settings === null) {
-      return null;
-    }
-    let count = 0;
-    const valid = new Set<string>(Object.values(KEYS));
-    for (const [key, value] of Object.entries(parsed.settings)) {
-      if (valid.has(key) && typeof value === "string") {
-        set(key, value);
-        count += 1;
-      }
-    }
-    return count;
-  } catch {
-    return null;
-  }
-}
-
-export function resetSettings(): void {
-  for (const key of Object.values(KEYS)) {
-    remove(key);
-  }
-}

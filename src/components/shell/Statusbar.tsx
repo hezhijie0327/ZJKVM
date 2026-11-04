@@ -1,18 +1,23 @@
 import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect } from "react";
+import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { STATUS_CHIP } from "@/lib/styles";
 import {
+  connectGateChannelAtom,
   connectGateOpenAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
+  micGrantedAtom,
   recordingAtom,
   recordingDurationAtom,
   serialStateAtom,
+  usbConnectedAtom,
   videoStateAtom,
-  videoStatsAtom,
 } from "@/state/atoms";
+import { checkMic, disconnectSerial, disconnectVideo, grantMic, stopDemoMode } from "@/state/connection";
 import type { LedState } from "@/types";
 
 function LedChip({ label, on, hint }: { label: string; on: boolean; hint: string }) {
@@ -57,16 +62,41 @@ export function Statusbar() {
   const serialState = useAtomValue(serialStateAtom);
   const demo = useAtomValue(demoModeAtom);
   const leds = useAtomValue(ledsAtom);
+  const usb = useAtomValue(usbConnectedAtom);
   const firmware = useAtomValue(firmwareAtom);
+  const micGranted = useAtomValue(micGrantedAtom);
   const recording = useAtomValue(recordingAtom);
   const duration = useAtomValue(recordingDurationAtom);
-  const stats = useAtomValue(videoStatsAtom);
   const setGateOpen = useSetAtom(connectGateOpenAtom);
+  const setGateChannel = useSetAtom(connectGateChannelAtom);
 
+  useEffect(() => {
+    void checkMic();
+  }, []);
+
+  const openGate = (channel: "video" | "serial" | "all") => {
+    setGateChannel(channel);
+    setGateOpen(true);
+  };
+
+  /* Connection chips double as per-channel switches: a disconnected channel
+   * opens just its own slice of the connect gate; a connected one disconnects
+   * that channel alone. 演示 only appears while demo mode is running. */
   return (
     <footer className="shrink-0 border-t border-line/80 bg-bg">
-      <div className="flex h-9 items-center justify-between gap-3 overflow-x-auto px-4 font-mono text-[11px] whitespace-nowrap text-ink-3">
+      <div className="flex h-9 items-center justify-between gap-3 overflow-x-auto px-4 font-mono text-[11px] whitespace-nowrap text-ink-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex items-center gap-1.5">
+          {demo && (
+            <button
+              type="button"
+              className={cn(STATUS_CHIP, "border-accent text-accent")}
+              title={t("status.demoStop")}
+              onClick={() => stopDemoMode()}
+            >
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
+              {t("status.demo")}
+            </button>
+          )}
           <button
             type="button"
             className={cn(
@@ -74,8 +104,8 @@ export function Statusbar() {
               videoState === "connected" && "border-ok/60 text-ok",
               videoState !== "connected" && "transition-colors hover:border-ink-3 hover:text-ink",
             )}
-            title={videoState === "connected" ? t("status.video") : t("connect.title")}
-            onClick={() => videoState !== "connected" && setGateOpen(true)}
+            title={videoState === "connected" ? t("status.disconnectVideo") : t("connect.title")}
+            onClick={() => (videoState === "connected" ? disconnectVideo() : openGate("video"))}
           >
             <span
               aria-hidden="true"
@@ -83,51 +113,70 @@ export function Statusbar() {
             />
             {t("status.video")}
           </button>
-          {demo ? (
-            <span className={cn(STATUS_CHIP, "border-accent text-accent")} title={t("status.demo")}>
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
-              {t("status.demo")}
-            </span>
-          ) : (
+          <button
+            type="button"
+            className={cn(
+              STATUS_CHIP,
+              serialState === "connected" && "border-ok/60 text-ok",
+              serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
+            )}
+            title={
+              serialState === "connected"
+                ? t("status.disconnectSerial")
+                : serialState === "disconnected"
+                  ? t("connect.serial")
+                  : t("status.serial")
+            }
+            onClick={() =>
+              serialState === "connected"
+                ? void disconnectSerial()
+                : serialState === "disconnected" && openGate("serial")
+            }
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-1.5 rounded-full",
+                serialState === "connected" ? "bg-ok" : serialState === "connecting" ? "bg-warning" : "bg-line",
+              )}
+            />
+            {t("status.serial")}
+          </button>
+          {micGranted !== null && (
             <button
               type="button"
               className={cn(
                 STATUS_CHIP,
-                serialState === "connected" && "border-ok/60 text-ok",
-                serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
+                micGranted ? "border-ok/60 text-ok" : "transition-colors hover:border-ink-3 hover:text-ink",
               )}
-              title={serialState === "disconnected" ? t("connect.title") : t("status.serial")}
-              onClick={() => serialState === "disconnected" && setGateOpen(true)}
+              title={micGranted ? t("audio.micGranted") : t("audio.micRequest")}
+              onClick={() => !micGranted && void grantMic()}
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-1.5 rounded-full",
-                  serialState === "connected" ? "bg-ok" : serialState === "connecting" ? "bg-warning" : "bg-line",
-                )}
-              />
-              {t("status.serial")}
+              <span aria-hidden="true" className={cn("size-1.5 rounded-full", micGranted ? "bg-ok" : "bg-line")} />
+              {t("status.mic")}
             </button>
+          )}
+          {usb !== null && (
+            <span
+              role="img"
+              aria-label={`${t("status.hid")} ${usb ? "on" : "off"}`}
+              className={cn(STATUS_CHIP, usb ? "border-ok/60 text-ok" : "border-warning/60 text-warning")}
+              title={t("status.hidHint")}
+            >
+              <span aria-hidden="true" className={cn("size-1.5 rounded-full", usb ? "bg-ok" : "bg-warning")} />
+              {t("status.hid")}
+            </span>
           )}
           <LedRow leds={leds} />
           {firmware && <span className="hidden sm:inline">{t("status.fw", { v: firmware })}</span>}
-        </div>
-
-        <div className="flex items-center gap-1.5">
           {recording && (
             <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
               <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
               REC {formatDuration(duration)}
             </span>
           )}
-          {stats.width > 0 && (
-            <span aria-hidden="true" className="hidden md:inline">
-              {stats.width}×{stats.height}
-              {stats.fps !== null ? ` · ${stats.fps}fps` : ""}
-            </span>
-          )}
-          <span aria-hidden="true" className="hidden md:inline">
-            © 2026 ZJKVM
+          <span aria-hidden="true" className="shrink-0">
+            © {new Date().getFullYear()} {siteConfig.copyright}
           </span>
         </div>
       </div>

@@ -9,7 +9,6 @@ import {
   Monitor,
   MousePointer2,
   PictureInPicture2,
-  Settings2,
   Square,
   Volume2,
 } from "lucide-react";
@@ -17,7 +16,6 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { AudioPanel } from "@/components/toolbar/panels/AudioPanel";
 import { KeyboardPanel } from "@/components/toolbar/panels/KeyboardPanel";
 import { MousePanel } from "@/components/toolbar/panels/MousePanel";
-import { SettingsPanel } from "@/components/toolbar/panels/SettingsPanel";
 import { VideoPanel } from "@/components/toolbar/panels/VideoPanel";
 import { IconButton } from "@/components/ui/IconButton";
 import { Popover } from "@/components/ui/Popover";
@@ -60,7 +58,6 @@ export function Toolbar() {
   const audioButtonRef = useRef<HTMLButtonElement>(null);
   const keyboardButtonRef = useRef<HTMLButtonElement>(null);
   const mouseButtonRef = useRef<HTMLButtonElement>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const recorderRef = useRef(new StreamRecorder());
   const timerRef = useRef<number | null>(null);
 
@@ -256,21 +253,14 @@ export function Toolbar() {
 
       <span aria-hidden="true" className={TOOLBAR_DIVIDER} />
 
-      <IconButton
-        ref={withAnchors ? settingsButtonRef : undefined}
-        label={t("tb.settings")}
-        active={activePanel === "settings"}
-        onClick={() => togglePanel("settings")}
-        className="shrink-0"
-      >
-        <Settings2 aria-hidden="true" className="size-4" />
-      </IconButton>
       <IconButton label={t("tb.fullscreen")} onClick={toggleFullscreen} className="shrink-0">
         <Maximize aria-hidden="true" className="size-4" />
       </IconButton>
-      <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)} className="shrink-0">
-        <ChevronUp aria-hidden="true" className="size-4" />
-      </IconButton>
+      {!isMobile && (
+        <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)} className="shrink-0">
+          <ChevronUp aria-hidden="true" className="size-4" />
+        </IconButton>
+      )}
     </>
   );
 
@@ -279,15 +269,11 @@ export function Toolbar() {
     audio: <AudioPanel />,
     keyboard: <KeyboardPanel />,
     mouse: <MousePanel />,
-    settings: <SettingsPanel />,
   };
 
   if (collapsed) {
     return (
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex justify-center md:absolute md:inset-x-auto md:bottom-auto md:top-2"
-        style={{ transform: isMobile ? undefined : `translateY(${pos.y}px)` }}
-      >
+      <div className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center px-2">
         <div className="pointer-events-auto">
           <IconButton label={t("tb.expand")} active onClick={() => setCollapsed(false)} className="shadow-pop">
             <ChevronDown aria-hidden="true" className="size-4" />
@@ -300,30 +286,31 @@ export function Toolbar() {
   if (isMobile) {
     return (
       <>
-        {/* Open panel as a sheet above the dock — never overlapping the status bar */}
+        {/* Floating pill dock at the top of the stage — same grammar as
+            desktop. absolute (not fixed): it anchors to the stage below the
+            page header; a viewport-fixed top would hide under the header. */}
+        <div
+          role="toolbar"
+          aria-label="KVM"
+          aria-orientation="horizontal"
+          className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center px-2"
+        >
+          <div className="pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line/80 bg-bg/85 p-1 shadow-pop backdrop-blur-md [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            {buttons(false)}
+          </div>
+        </div>
+
+        {/* Panel sheet drops from under the pill */}
         {activePanel && PANELS[activePanel] && (
           <div
             className={cn(
               CARD,
-              "animate-fade-up fixed inset-x-2 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 max-h-[62dvh] overflow-y-auto overscroll-contain shadow-pop",
+              "animate-fade-up absolute inset-x-2 top-14 z-40 max-h-[60dvh] overflow-y-auto overscroll-contain shadow-pop",
             )}
           >
             {PANELS[activePanel]}
           </div>
         )}
-
-        {/* Bottom dock: one scrollable row, clear of the home indicator */}
-        <div
-          role="toolbar"
-          aria-label="KVM"
-          aria-orientation="horizontal"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-line/80 bg-bg/85 backdrop-blur-md"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <div className="flex items-center gap-0.5 overflow-x-auto px-2 py-1.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-            {buttons(false)}
-          </div>
-        </div>
         {recording && <span className="sr-only" aria-live="polite" />}
       </>
     );
@@ -388,14 +375,6 @@ export function Toolbar() {
           className="w-80"
         >
           <MousePanel />
-        </Popover>
-        <Popover
-          open={activePanel === "settings"}
-          onClose={() => setActivePanel(null)}
-          anchorRef={settingsButtonRef}
-          className="w-80"
-        >
-          <SettingsPanel />
         </Popover>
       </div>
       {recording && <span className="sr-only" aria-live="polite" />}

@@ -1,26 +1,23 @@
-import { useAtom, useAtomValue } from "jotai";
-import { useState } from "react";
-import { MacroModal } from "@/components/toolbar/MacroModal";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ROW_LABEL } from "@/components/ui/Kbd";
+import { Modal } from "@/components/ui/Modal";
 import { Segmented } from "@/components/ui/Segmented";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/cn";
 import { getActiveLink } from "@/lib/device/device";
-import { sendQuick, typeText } from "@/lib/hid";
+import { typeText } from "@/lib/hid";
 import { useI18n } from "@/lib/i18n";
-import { DIVIDE_LIST, META, PANEL_COL, PANEL_ROW } from "@/lib/styles";
-import { demoModeAtom, keyboardEnabledAtom, serialStateAtom, virtualKeyboardOpenAtom } from "@/state/atoms";
+import { DIVIDE_LIST, EYEBROW, META, PANEL_ROW } from "@/lib/styles";
+import {
+  activePanelAtom,
+  demoModeAtom,
+  keyboardEnabledAtom,
+  serialStateAtom,
+  virtualKeyboardOpenAtom,
+} from "@/state/atoms";
 import { pushToast } from "@/state/toast";
-
-const QUICK_KEYS: { label: string; keys: string[] }[] = [
-  { label: "Esc", keys: ["Escape"] },
-  { label: "Ctrl+Alt+Del", keys: ["ControlLeft", "AltLeft", "Delete"] },
-  { label: "Alt+Tab", keys: ["AltLeft", "Tab"] },
-  { label: "Win", keys: ["MetaLeft"] },
-  { label: "Ctrl+Shift+Esc", keys: ["ControlLeft", "ShiftLeft", "Escape"] },
-  { label: "Menu", keys: ["ContextMenu"] },
-];
 
 const SPEEDS = [
   { value: "slow", label: "paste.slow", ms: 90 },
@@ -32,33 +29,62 @@ export function KeyboardPanel() {
   const { t } = useI18n();
   const [enabled, setEnabled] = useAtom(keyboardEnabledAtom);
   const [virtualOpen, setVirtualOpen] = useAtom(virtualKeyboardOpenAtom);
+  const setActivePanel = useSetAtom(activePanelAtom);
   const serialState = useAtomValue(serialStateAtom);
   const demo = useAtomValue(demoModeAtom);
+
+  /** Opening the floating keyboard from this panel closes the panel — the
+   *  keyboard spawns under the toolbar and would sit behind/under the panel. */
+  const toggleVirtual = (next: boolean) => {
+    setVirtualOpen(next);
+    if (next) setActivePanel(null);
+  };
 
   const [text, setText] = useState("");
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]["value"]>("normal");
   const [typing, setTyping] = useState(false);
   const [lastSkip, setLastSkip] = useState<number | null>(null);
-  const [macroOpen, setMacroOpen] = useState(false);
+  /** Paste preview dialog: shows the text + progress before/while typing. */
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [typed, setTyped] = useState(0);
+  const cancelRef = useRef(false);
 
   const linked = serialState === "connected" || demo;
 
-  const send = async () => {
+  /** Open the preview instead of typing blindly — long pastes can be
+   *  reviewed and cancelled mid-stream. */
+  const openPreview = () => {
     if (!text || typing) return;
     if (!getActiveLink()) return;
+    cancelRef.current = false;
+    setTyped(0);
+    setPreviewOpen(true);
+  };
+
+  const confirmSend = async () => {
+    if (!text || typing) return;
     setTyping(true);
     setLastSkip(null);
     try {
       const interval = SPEEDS.find((s) => s.value === speed)?.ms ?? 50;
-      const result = await typeText(text, interval);
+      const result = await typeText(text, interval, {
+        onProgress: setTyped,
+        isCancelled: () => cancelRef.current,
+      });
       if (result.skipped > 0) {
         setLastSkip(result.skipped);
       }
       pushToast(t("paste.sent", { n: result.typed }));
       setText("");
+      setPreviewOpen(false);
     } finally {
       setTyping(false);
     }
+  };
+
+  const cancelSend = () => {
+    cancelRef.current = true;
+    setPreviewOpen(false);
   };
 
   return (
@@ -70,25 +96,10 @@ export function KeyboardPanel() {
 
       <div className={PANEL_ROW}>
         <span className={ROW_LABEL}>{t("kb.virtual")}</span>
-        <Switch checked={virtualOpen} onChange={setVirtualOpen} label={t("kb.virtual")} />
+        <Switch checked={virtualOpen} onChange={toggleVirtual} label={t("kb.virtual")} />
       </div>
 
-      <div className={PANEL_COL}>
-        <span className={ROW_LABEL}>{t("kb.quick")}</span>
-        <div className="grid grid-cols-3 gap-1.5">
-          {QUICK_KEYS.map((quick) => (
-            <button
-              key={quick.label}
-              type="button"
-              disabled={!linked}
-              onClick={() => sendQuick(quick.keys)}
-              className="kvm-key h-9 w-full"
-            >
-              {quick.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Quick keys now live on the virtual keyboard, above the numpad. */}
 
       {/* Paste box */}
       <div className="space-y-2 px-4 py-3">
@@ -113,22 +124,49 @@ export function KeyboardPanel() {
         />
         <div className="flex items-center justify-between gap-3">
           <span className={META}>{lastSkip !== null ? t("paste.nonAscii", { n: lastSkip }) : ""}</span>
-          <Button variant="primary" className="h-9 px-4" onClick={send} disabled={!linked || typing || !text.trim()}>
-            {typing ? t("macro.playing") : t("paste.send")}
+          <Button
+            variant="primary"
+            className="h-9 px-4"
+            onClick={openPreview}
+            disabled={!linked || typing || !text.trim()}
+          >
+            {typing ? t("paste.sending") : t("paste.send")}
           </Button>
         </div>
       </div>
 
-      <div className={cn(PANEL_ROW, "flex-wrap")}>
-        <span className={ROW_LABEL}>{t("kb.macros")}</span>
-        <Button className="h-9 px-4" onClick={() => setMacroOpen(true)} disabled={!linked}>
-          {t("macro.title")}
-        </Button>
-      </div>
-
       {!enabled && <p className={cn(META, "px-4 py-3")}>{t("kb.captureHint")}</p>}
 
-      <MacroModal open={macroOpen} onClose={() => setMacroOpen(false)} />
+      {/* Paste preview: review the text, then type it out with progress and a
+          live cancel — long pastes should never fire blindly. */}
+      <Modal open={previewOpen} onClose={cancelSend} label={t("paste.previewTitle")} className="max-w-md">
+        <div className="relative border-b border-line/70 px-5 pt-5 pb-3">
+          <p className={EYEBROW}>PASTE</p>
+          <h2 className="mt-1 font-serif text-lg font-semibold tracking-tight text-ink">{t("paste.previewTitle")}</h2>
+        </div>
+        <div className="px-5 py-4">
+          <div className="max-h-32 overflow-y-auto rounded-xl border border-line bg-surface px-3 py-2 text-sm whitespace-pre-wrap text-ink">
+            {text || "—"}
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className={META}>{t("paste.charCount", { n: text.length })}</span>
+            {typing && <span className={META}>{t("paste.progress", { typed, n: text.length })}</span>}
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 pb-5">
+          <Button className="h-9 px-4" onClick={cancelSend} disabled={!typing}>
+            {t("paste.cancel")}
+          </Button>
+          <Button
+            variant="primary"
+            className="h-9 px-4"
+            onClick={confirmSend}
+            disabled={typing || !linked || !text.trim()}
+          >
+            {t("paste.confirm")}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

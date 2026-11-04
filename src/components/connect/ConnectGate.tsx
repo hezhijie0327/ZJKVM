@@ -1,38 +1,45 @@
-import { useAtomValue } from "jotai";
-import { Usb } from "lucide-react";
+import { useAtom, useAtomValue } from "jotai";
+import { Usb, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dropdown } from "@/components/ui/Dropdown";
-import { Modal } from "@/components/ui/Modal";
 import { isSecureContext, supportsSerial } from "@/lib/browser";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { ALERT_DANGER, EYEBROW, META, PAPER_STRIP, STRIP_PAPER, STRIP_PRIMARY, TAPE } from "@/lib/styles";
+import { isCaptureLike } from "@/lib/media/camera";
+import { ALERT_DANGER, CARD, EYEBROW, META, PAPER_STRIP, STRIP_PAPER, TAPE } from "@/lib/styles";
 import {
-  audioByGroupAtom,
-  demoModeAtom,
+  connectGateChannelAtom,
   serialStateAtom,
   videoDeviceIdAtom,
   videoDevicesAtom,
   videoStateAtom,
 } from "@/state/atoms";
-import { connectVideo, openSerial, probeVideoDevices, refreshVideoDevices, startDemo } from "@/state/connection";
+import { connectVideo, openSerial, probeVideoDevices, refreshVideoDevices } from "@/state/connection";
 
-/** Connect gate: capture card + HID serial + demo escape hatch. Auto-opens
- *  when nothing is connected (same contract as the original DeviceModal, but
- *  dismissible so the console chrome stays explorable). */
+/** Connect gate: hardware auth + device picks only (capture card + HID
+ *  serial) — a compact card docked to the bottom-left corner (above the
+ *  statusbar chips that open it), no backdrop: every auth and device pick
+ *  happens down here. One chip opens one slice (video → capture card only,
+ *  serial → serial only); the cold start opens both. Auto-opens when nothing
+ *  is connected; dismissible so the console chrome stays explorable. */
 export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
+  const [channel] = useAtom(connectGateChannelAtom);
   const videoDevices = useAtomValue(videoDevicesAtom);
-  const audioByGroup = useAtomValue(audioByGroupAtom);
   const videoDeviceId = useAtomValue(videoDeviceIdAtom);
   const videoState = useAtomValue(videoStateAtom);
   const serialState = useAtomValue(serialStateAtom);
-  const demo = useAtomValue(demoModeAtom);
 
   const [picked, setPicked] = useState(videoDeviceId);
   const [videoBusy, setVideoBusy] = useState(false);
   const [serialBusy, setSerialBusy] = useState(false);
+
+  /* Capture-card devices first: virtual cameras (OBS etc.) are noise for a
+   * KVM. If nothing matches the capture signature, fall back to all devices
+   * so unusual card names never disappear from the list. */
+  const captureDevices = videoDevices.filter((d) => isCaptureLike(d.label));
+  const listedDevices = captureDevices.length > 0 ? captureDevices : videoDevices;
 
   useEffect(() => {
     if (open) {
@@ -41,10 +48,22 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
   }, [open]);
 
   useEffect(() => {
-    if (videoDevices.length > 0 && !picked) {
-      setPicked(videoDevices[0]?.deviceId ?? "");
+    if (listedDevices.length > 0 && !listedDevices.some((d) => d.deviceId === picked)) {
+      setPicked(listedDevices[0]?.deviceId ?? "");
     }
-  }, [videoDevices, picked]);
+  }, [listedDevices, picked]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open, onClose]);
 
   const handleVideo = async () => {
     setVideoBusy(true);
@@ -58,23 +77,39 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
     setSerialBusy(false);
   };
 
-  const connected = videoState === "connected" || serialState === "connected" || demo;
+  const connected = videoState === "connected" || serialState === "connected";
+
+  if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} label={t("connect.title")} className="max-w-xl">
-      <div className="relative border-b border-line/70 px-6 pt-6 pb-5">
-        <span
-          aria-hidden="true"
-          className={cn(TAPE, "-top-2 left-1/2 w-28 -translate-x-1/2 -rotate-3 bg-accent-soft/80")}
-        />
+    <div
+      role="dialog"
+      aria-label={t("connect.title")}
+      className={cn(
+        CARD,
+        "animate-fade-up fixed bottom-12 left-2 right-2 z-50 max-h-[70dvh] overflow-y-auto shadow-pop md:bottom-12 md:left-4 md:right-auto md:w-[23rem]",
+      )}
+    >
+      <div className="relative border-b border-line/70 px-4 pt-4 pb-3">
+        <span aria-hidden="true" className={cn(TAPE, "-top-2 left-10 w-24 -rotate-3 bg-accent-soft/80")} />
         <p className={EYEBROW}>CONNECT</p>
-        <h2 className="mt-1.5 font-serif text-2xl font-semibold tracking-tight text-ink">{t("connect.title")}</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{t("connect.desc")}</p>
+        <h2 className="mt-1 font-serif text-lg font-semibold tracking-tight text-ink">{t("connect.title")}</h2>
+        <p className="mt-1 text-xs leading-relaxed text-ink-2">
+          {t(channel === "video" ? "connect.descVideo" : channel === "serial" ? "connect.descSerial" : "connect.desc")}
+        </p>
+        <button
+          type="button"
+          aria-label={t("common.close")}
+          onClick={onClose}
+          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <X aria-hidden="true" className="size-3.5" />
+        </button>
       </div>
 
       <div className="divide-y divide-line/70">
         {!isSecureContext() && (
-          <div className="px-6 pt-4">
+          <div className="px-4 pt-3">
             <p role="alert" className={ALERT_DANGER}>
               {t("browser.secureMissing")}
             </p>
@@ -82,45 +117,41 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
         )}
 
         {/* Capture card */}
-        <div className="px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="text-sm font-medium text-ink" htmlFor="connect-video-device">
+        {channel !== "serial" && (
+          <div className="px-4 py-3">
+            <label className={cn(META, "mb-1.5 block font-medium text-ink-2")} htmlFor="connect-video-device">
               {t("connect.video")}
             </label>
-            <div className="flex items-center gap-2">
-              <Dropdown
-                id="connect-video-device"
-                label={t("connect.video")}
-                value={picked}
-                onChange={setPicked}
-                onOpen={() => void probeVideoDevices()}
-                options={
-                  videoDevices.length === 0
-                    ? [{ value: "", label: t("connect.noVideo") }]
-                    : videoDevices.map((device) => ({
-                        value: device.deviceId,
-                        label: device.label || t("connect.videoAuto"),
-                      }))
-                }
-                className="w-60"
-              />
-              <Button variant="primary" onClick={handleVideo} disabled={!picked || videoBusy}>
-                {videoBusy ? t("connect.connecting") : t("connect.openVideo")}
-              </Button>
-            </div>
+            <Dropdown
+              id="connect-video-device"
+              label={t("connect.video")}
+              value={picked}
+              onChange={setPicked}
+              onOpen={() => void probeVideoDevices()}
+              options={
+                listedDevices.length === 0
+                  ? [{ value: "", label: t("connect.noVideo") }]
+                  : listedDevices.map((device) => ({
+                      value: device.deviceId,
+                      label: device.label || t("connect.videoAuto"),
+                    }))
+              }
+              className="w-full"
+            />
+            <Button variant="primary" className="mt-2 w-full" onClick={handleVideo} disabled={!picked || videoBusy}>
+              {videoBusy ? t("connect.connecting") : t("connect.openVideo")}
+            </Button>
+            {videoState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.video")}</p>}
+            {videoState !== "connected" && <p className={cn(META, "mt-2")}>{t("connect.authHint")}</p>}
           </div>
-          {videoState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.video")}</p>}
-          {videoState !== "connected" && <p className={cn(META, "mt-2")}>{t("connect.authHint")}</p>}
-        </div>
+        )}
 
         {/* HID serial */}
-        <div className="px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink">{t("connect.serial")}</p>
-              <p className={cn(META, "mt-0.5")}>{t("connect.serialHint")}</p>
-            </div>
-            <Button onClick={handleSerial} disabled={!supportsSerial() || serialBusy}>
+        {channel !== "video" && (
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium text-ink">{t("connect.serial")}</p>
+            <p className={cn(META, "mt-0.5")}>{t("connect.serialHint")}</p>
+            <Button className="mt-2 w-full" onClick={handleSerial} disabled={!supportsSerial() || serialBusy}>
               <Usb aria-hidden="true" className="size-4" />
               {serialBusy
                 ? t("connect.connecting")
@@ -128,40 +159,24 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
                   ? t("common.retry")
                   : t("connect.serialButton")}
             </Button>
+            {!supportsSerial() && (
+              <p role="alert" className={cn(ALERT_DANGER, "mt-3 py-2")}>
+                {t("browser.serialMissing")}
+              </p>
+            )}
+            {serialState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.serial")}</p>}
           </div>
-          {!supportsSerial() && (
-            <p role="alert" className={cn(ALERT_DANGER, "mt-3 py-2")}>
-              {t("browser.serialMissing")}
-            </p>
-          )}
-          {serialState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.serial")}</p>}
-        </div>
+        )}
 
-        {/* Demo mode */}
-        <div className="px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-ink">{t("connect.demo")}</p>
-              <p className={cn(META, "mt-0.5 max-w-sm")}>{t("connect.demoHint")}</p>
-            </div>
-            <button type="button" className={cn(PAPER_STRIP, STRIP_PRIMARY)} onClick={startDemo}>
-              {t("connect.demo")}
+        {/* Close strip (only meaningful once something is connected) */}
+        {connected && (
+          <div className="px-4 py-3">
+            <button type="button" className={cn(PAPER_STRIP, STRIP_PAPER, "w-full")} onClick={onClose}>
+              {t("common.close")}
             </button>
           </div>
-        </div>
-
-        {/* Secondary strip: skip */}
-        <div className="flex items-center justify-between px-6 py-4">
-          <p className={META}>{audioByGroup.size > 0 ? `${audioByGroup.size} audio` : ""}</p>
-          <div className="flex items-center gap-2">
-            {connected && (
-              <button type="button" className={cn(PAPER_STRIP, STRIP_PAPER)} onClick={onClose}>
-                {t("common.close")}
-              </button>
-            )}
-          </div>
-        </div>
+        )}
       </div>
-    </Modal>
+    </div>
   );
 }

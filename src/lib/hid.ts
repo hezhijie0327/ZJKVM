@@ -1,11 +1,11 @@
 /** High-level HID actions built on the keyboard report: clipboard paste
- *  typing, chord/sequence macros, quick keys. All actions share a mutex so a
- *  macro can never interleave with paste typing mid-stream. */
+ *  typing, key-by-key. Actions share a mutex so a long stream can never
+ *  interleave with another mid-flight. */
 
 import { CharCodes, ShiftChars } from "@/lib/device/charcodes";
 import { requireLink } from "@/lib/device/device";
 import { KeyboardReport } from "@/lib/device/keyboard-report";
-import { getKeycode, KeycodeMap } from "@/lib/device/keymap";
+import { KeycodeMap } from "@/lib/device/keymap";
 
 // keycode → representative event.code (first match wins)
 const CODE_FOR_KEYCODE = new Map<number, string>();
@@ -34,22 +34,33 @@ export interface TypeResult {
   skipped: number;
 }
 
+export interface TypeOptions {
+  /** Progress callback after each typed key. */
+  onProgress?: (typed: number) => void;
+  /** Poll between keys — returning true stops the stream (paste cancelled). */
+  isCancelled?: () => boolean;
+}
+
 /** Type text key-by-key. \n → Enter, \t → Tab, non-ASCII counted and skipped
  *  (HID cannot map them — surfaced to the user instead of being silently
  *  dropped like the original did). */
-export function typeText(text: string, intervalMs = 50): Promise<TypeResult> {
+export function typeText(text: string, intervalMs = 50, options?: TypeOptions): Promise<TypeResult> {
   return enqueue(async () => {
     const report = new KeyboardReport();
     let typed = 0;
     let skipped = 0;
 
     for (const char of text) {
+      if (options?.isCancelled?.()) {
+        break;
+      }
       const ascii = char.charCodeAt(0);
       if (char === "\n" || char === "\r") {
         await press(report, "Enter");
         await sleep(intervalMs);
         await release(report, "Enter");
         typed += 1;
+        options?.onProgress?.(typed);
         continue;
       }
       const keycode = CharCodes[ascii];
@@ -69,49 +80,11 @@ export function typeText(text: string, intervalMs = 50): Promise<TypeResult> {
       await release(report, code);
       if (needShift) await release(report, "ShiftLeft");
       typed += 1;
+      options?.onProgress?.(typed);
       await sleep(intervalMs);
     }
 
     await requireLink().sendKeyboardData(report.reset());
     return { typed, skipped };
   });
-}
-
-/** Hold every key down at once, then release all (chord, ≤6 keys). */
-export function sendChord(keys: string[]): Promise<void> {
-  return enqueue(async () => {
-    const report = new KeyboardReport();
-    const valid = keys.filter((k) => getKeycode(k) !== undefined).slice(0, 6);
-    for (const key of valid) {
-      await requireLink().sendKeyboardData(report.keyDown(key));
-    }
-    await sleep(50);
-    await requireLink().sendKeyboardData(report.reset());
-  });
-}
-
-/** Press and release keys one at a time, optionally repeated — for BIOS boot
- *  keys and menus that poll the keyboard buffer. */
-export function sendSequence(keys: string[], holdMs = 60, gapMs = 120, repeat = 1): Promise<void> {
-  return enqueue(async () => {
-    const report = new KeyboardReport();
-    const valid = keys.filter((k) => getKeycode(k) !== undefined);
-    for (let round = 0; round < Math.max(1, repeat); round++) {
-      for (const key of valid) {
-        await press(report, key);
-        await sleep(holdMs);
-        await release(report, key);
-        await sleep(gapMs);
-      }
-    }
-    await requireLink().sendKeyboardData(report.reset());
-  });
-}
-
-/** One-off quick key (Esc, Ctrl+Alt+Del chips…). Chord when modifiers exist. */
-export function sendQuick(keys: string[]): Promise<void> {
-  if (keys.length <= 1) {
-    return sendSequence(keys);
-  }
-  return sendChord(keys);
 }

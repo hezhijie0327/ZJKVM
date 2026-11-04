@@ -14,14 +14,17 @@ import {
   pickCaptureDevice,
   watchDeviceChange,
 } from "@/lib/media/camera";
+import { checkPermission, requestPermission } from "@/lib/media/permission";
 import {
   audioByGroupAtom,
   connectGateOpenAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
+  micGrantedAtom,
   resolutionAtom,
   serialStateAtom,
+  usbConnectedAtom,
   videoDeviceIdAtom,
   videoDevicesAtom,
   videoStateAtom,
@@ -53,6 +56,28 @@ export async function refreshVideoDevices(): Promise<void> {
 export async function probeVideoDevices(): Promise<void> {
   await ensureCameraPermission();
   await refreshVideoDevices();
+}
+
+/** Sync the mic permission into the atom (statusbar chip state). */
+export async function checkMic(): Promise<void> {
+  store.set(micGrantedAtom, await checkPermission("microphone"));
+}
+
+/** Grant the mic, then re-enumerate and reopen the video stream so the
+ *  capture card's paired audio track joins. Runs from the statusbar chip. */
+export async function grantMic(): Promise<boolean> {
+  const granted = await requestPermission("microphone");
+  store.set(micGrantedAtom, granted);
+  if (!granted) {
+    pushToast(t("audio.micFail"), "danger");
+    return false;
+  }
+  pushToast(t("toast.micGranted"));
+  await probeVideoDevices();
+  if (store.get(videoStateAtom) === "connected") {
+    await connectVideo(store.get(videoDeviceIdAtom) || undefined);
+  }
+  return true;
 }
 
 /** Open the capture card. Resolves the target device robustly: without
@@ -249,29 +274,57 @@ function stopDemo(): void {
   store.set(demoModeAtom, false);
 }
 
-/** Tear everything down. */
-export async function disconnectAll(): Promise<void> {
+/** Disconnect the capture card only (video chip in the statusbar). */
+export function disconnectVideo(): void {
+  camera.close();
+  store.set(videoStreamAtom, null);
+  store.set(videoStateAtom, "disconnected");
+}
+
+/** Disconnect the HID serial link only (serial chip in the statusbar).
+ *  Telemetry keeps running if demo mode took over the link. */
+export async function disconnectSerial(): Promise<void> {
   serialWanted = false; // user-initiated — the rebind must stay quiet
   disarmSerialRebind();
-  stopLedPolling();
-  stopDemo();
-  setActiveLink(null);
   if (serialDevice) {
     await serialDevice.close();
     serialDevice = null;
   }
-  camera.close();
-  store.set(videoStreamAtom, null);
-  store.set(videoStateAtom, "disconnected");
+  if (!demoDevice) {
+    setActiveLink(null);
+    stopLedPolling();
+    store.set(firmwareAtom, null);
+    store.set(usbConnectedAtom, null);
+    store.set(ledsAtom, { num: false, caps: false, scroll: false });
+  }
   store.set(serialStateAtom, supportsSerial() ? "disconnected" : "unsupported");
-  store.set(firmwareAtom, null);
-  store.set(ledsAtom, { num: false, caps: false, scroll: false });
+}
+
+/** Stop demo mode (demo chip in the statusbar) and clear the stage unless
+ *  real hardware is still feeding it. */
+export function stopDemoMode(): void {
+  if (!demo) return;
+  stopDemo();
+  if (!camera.stream) {
+    store.set(videoStreamAtom, null);
+    store.set(videoStateAtom, "disconnected");
+  }
+  if (!serialDevice?.connected) {
+    setActiveLink(null);
+    stopLedPolling();
+    store.set(firmwareAtom, null);
+    store.set(usbConnectedAtom, null);
+    store.set(ledsAtom, { num: false, caps: false, scroll: false });
+  }
 }
 
 /* ── LED / firmware polling (the original shipped getInfo but never used it) ── */
 
+let ledPollWarned = false;
+
 function startLedPolling(): void {
   stopLedPolling();
+  ledPollWarned = false;
   const poll = async () => {
     const link: HidLink | null = demoDevice ?? (serialDevice?.connected ? serialDevice : null);
     if (!link) return;
@@ -279,8 +332,15 @@ function startLedPolling(): void {
       const info = await link.getInfo();
       store.set(ledsAtom, { num: info.NUM_LOCK, caps: info.CAPS_LOCK, scroll: info.SCROLL_LOCK });
       store.set(firmwareAtom, info.CHIP_VERSION);
-    } catch {
-      // transient read failures are normal while the bus is busy
+      store.set(usbConnectedAtom, info.IS_CONNECTED);
+      ledPollWarned = false;
+    } catch (err) {
+      // Transient read failures are normal while the bus is busy, but a device
+      // that never answers GET_INFO would otherwise fail silently forever.
+      if (!ledPollWarned) {
+        ledPollWarned = true;
+        console.warn("[zjkvm] LED/firmware poll failed:", err);
+      }
     }
   };
   void poll();

@@ -43,10 +43,27 @@ class MouseJiggler {
     this.lastMoveTime = Date.now() - 1000;
 
     const link = requireLink();
-    const forward = this.report.buildReport(10, 10, 0);
-    const back = this.report.buildReport(-10, -10, 0);
-    link.sendMouseData([MOUSE_MARKER.relative, ...forward]).catch(() => {});
-    link.sendMouseData([MOUSE_MARKER.relative, ...back]).catch(() => {});
+    // Lissajous figure-8: x = r·sin(t), y = (r/2)·sin(2t). One half period
+    // traces a loop and lands back at the origin, so the cursor never drifts;
+    // random phase + radius keep the path from repeating identically.
+    const r = 6 + Math.floor(Math.random() * 9); // 6..14 px
+    const phase = Math.random() * Math.PI * 2;
+    const steps = 4;
+    void (async () => {
+      for (let i = 1; i <= steps; i++) {
+        const t0 = phase + ((i - 1) / steps) * Math.PI;
+        const t1 = phase + (i / steps) * Math.PI;
+        const dx = Math.round((r / 2) * (Math.sin(2 * t1) - Math.sin(2 * t0)));
+        const dy = Math.round(r * (Math.sin(t1) - Math.sin(t0)));
+        if (!dx && !dy) continue;
+        const report = this.report.buildReport(dx, dy, 0);
+        try {
+          await link.sendMouseData([MOUSE_MARKER.relative, ...report]);
+        } catch {
+          return; // link dropped
+        }
+      }
+    })();
   }
 }
 

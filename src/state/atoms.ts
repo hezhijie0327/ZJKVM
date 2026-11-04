@@ -4,7 +4,7 @@
 
 import { atom } from "jotai";
 import * as storage from "@/lib/storage";
-import type { LedState, MediaDevice, Resolution, Rotation, SerialState, ShortcutMacro, VideoState } from "@/types";
+import type { LedState, MediaDevice, Resolution, Rotation, SerialState, VideoState } from "@/types";
 
 /* ── Connection ── */
 export const videoStateAtom = atom<VideoState>("disconnected");
@@ -43,7 +43,11 @@ export const jigglerAtom = atom<"enable" | "disable">(storage.getJiggler() === "
 
 /* ── Device telemetry ── */
 export const ledsAtom = atom<LedState>({ num: false, caps: false, scroll: false });
+/** USB enumeration on the controlled machine (GET_INFO data[1]); null = unknown. */
+export const usbConnectedAtom = atom<boolean | null>(null);
 export const firmwareAtom = atom<string | null>(null);
+/** Mic permission for the capture-card audio track; null = unknown. */
+export const micGrantedAtom = atom<boolean | null>(null);
 export const videoStatsAtom = atom<{ width: number; height: number; fps: number | null }>({
   width: 0,
   height: 0,
@@ -54,17 +58,13 @@ export const videoStatsAtom = atom<{ width: number; height: number; fps: number 
 export const recordingAtom = atom(false);
 export const recordingDurationAtom = atom(0);
 
-/* ── Macros ── */
-export const DEFAULT_MACROS: ShortcutMacro[] = [
-  { id: "cad", name: "Ctrl+Alt+Del", keys: ["ControlLeft", "AltLeft", "Delete"], mode: "chord", repeat: 1 },
-  { id: "wintab", name: "Win+Tab", keys: ["MetaLeft", "Tab"], mode: "chord", repeat: 1 },
-];
-export const macrosAtom = atom<ShortcutMacro[]>(storage.getMacros() ?? DEFAULT_MACROS);
-
 /* ── UI ── */
 export const activePanelAtom = atom<string | null>(null);
 export const toolbarCollapsedAtom = atom(storage.getToolbarCollapsed());
 export const toolbarPosAtom = atom(storage.getToolbarPos() ?? { x: 0, y: 0 });
 export const statsVisibleAtom = atom(storage.getStatsVisible() ?? true);
 export const connectGateOpenAtom = atom(false);
+/** Which slice of the connect gate to show: chips open their own slice, the
+ *  cold-start button opens everything. */
+export const connectGateChannelAtom = atom<"video" | "serial" | "all">("all");
 export const aboutOpenAtom = atom(false);

@@ -185,6 +185,28 @@ input[type="range"].kvm-range::-moz-range-thumb {
   box-shadow: none;
 }
 
+/* Dual-legend keycap (MX Keys style): two stacked legends on modifier keys,
+   sized to fit the standard keycap height so rows stay aligned */
+.kvm-key--stack {
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* iOS-style special caps: layer switches get the darker shade */
+.kvm-key--special {
+  background: var(--surface-2);
+}
+.kvm-key--special:hover {
+  background: var(--line);
+}
+
+/* iOS-style action cap (Enter): tinted accent, reads as "the" key to hit */
+.kvm-key--action {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
 /* ── Recording pulse ── */
 
 @keyframes kvm-pulse {

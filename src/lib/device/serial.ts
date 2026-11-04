@@ -27,6 +27,15 @@ export class SerialLink {
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private onDisconnect?: () => void;
 
+  /* Bytes pulled off the port but not yet consumed by a read() call. A single
+   * long-lived pump keeps exactly one read() in flight — the previous
+   * timeout-and-abandon approach silently dropped late chunks (losing whole
+   * GET_INFO frames) and collided with the still-pending read on the next
+   * call, which wedged LED/firmware polling for the entire session. */
+  private buffer: number[] = [];
+  private waiter: (() => void) | null = null;
+  private pump: Promise<void> | null = null;
+
   private disconnectHandler = (event: Event) => {
     if (event.target === this.instance) {
       this.handleDisconnect();
@@ -54,6 +63,8 @@ export class SerialLink {
 
     this.reader = this.instance.readable.getReader();
     this.writer = this.instance.writable.getWriter();
+    this.buffer.length = 0;
+    this.startPump();
 
     if (options.onDisconnect) {
       this.onDisconnect = options.onDisconnect;
@@ -112,39 +123,66 @@ export class SerialLink {
     }
   }
 
-  /** Read until at least minSize bytes arrived or READ_TIMEOUT elapsed
-   *  (returns whatever arrived — callers must validate). */
+  /** Feed the buffer with one read() at a time for the life of the port. */
+  private startPump(): void {
+    const reader = this.reader;
+    if (!reader || this.pump) return;
+    this.pump = (async () => {
+      try {
+        while (this.reader === reader) {
+          const response = await reader.read();
+          if (response.done || !response.value) break;
+          this.buffer.push(...Array.from(response.value));
+          this.wake();
+        }
+      } catch {
+        // reader cancelled or the port errored — the disconnect event / next
+        // write surfaces it; reads just keep timing out on an empty buffer.
+      } finally {
+        if (this.reader === reader) this.pump = null;
+        this.wake();
+      }
+    })();
+  }
+
+  private wake(): void {
+    const pending = this.waiter;
+    this.waiter = null;
+    pending?.();
+  }
+
+  private waitForData(): Promise<void> {
+    if (this.buffer.length > 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      this.waiter = resolve;
+    });
+  }
+
+  /** Discard buffered input — any bytes already buffered before a new request
+   *  are stale fragments and would misalign the expected response frame. */
+  flush(): void {
+    this.buffer.length = 0;
+  }
+
+  /** Read up to minSize bytes, waiting at most READ_TIMEOUT for them. Extra
+   *  buffered bytes stay for the next call instead of being dropped. */
   async read(minSize: number, delayAfterRead = 0): Promise<number[]> {
     if (!this.reader) {
       throw new Error("Serial port not initialized");
     }
 
-    const result: number[] = [];
-    const startTime = Date.now();
-
-    try {
-      while (result.length < minSize) {
-        const remainingTime = this.READ_TIMEOUT - (Date.now() - startTime);
-        if (remainingTime <= 0) return result;
-
-        const response = await raceWithTimeout(this.reader.read(), remainingTime);
-        if (!response || response.done || !response.value) break;
-
-        result.push(...Array.from(response.value));
-      }
-
-      if (delayAfterRead > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delayAfterRead));
-      }
-
-      return result;
-    } catch (err) {
-      if (isDisconnectError(err)) {
-        this.handleDisconnect();
-        throw new Error("Device disconnected");
-      }
-      throw err;
+    const deadline = Date.now() + this.READ_TIMEOUT;
+    while (this.buffer.length < minSize && this.reader) {
+      const remainingTime = deadline - Date.now();
+      if (remainingTime <= 0) break;
+      await raceWithTimeout(this.waitForData(), remainingTime);
     }
+
+    const result = this.buffer.splice(0, minSize);
+    if (delayAfterRead > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayAfterRead));
+    }
+    return result;
   }
 
   async close(): Promise<void> {

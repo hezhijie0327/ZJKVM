@@ -1,18 +1,27 @@
 import { useAtomValue } from "jotai";
-import { X } from "lucide-react";
-import { Kbd } from "@/components/ui/Kbd";
+import { MonitorPlay, X } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { supportsSerial } from "@/lib/browser";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { EYEBROW, META, MONO_CHIP, TAPE } from "@/lib/styles";
-import { firmwareAtom, serialStateAtom } from "@/state/atoms";
+import { EYEBROW, META, MONO_CHIP, PAPER_STRIP, STRIP_PRIMARY, TAPE } from "@/lib/styles";
+import { demoModeAtom, firmwareAtom, serialStateAtom } from "@/state/atoms";
+import { startDemo } from "@/state/connection";
+import { pushToast } from "@/state/toast";
 
-/** About dialog: family story, protocol summary, capability report. */
+/** About dialog: product introduction, live capability report, demo entry. */
 export function AboutModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const firmware = useAtomValue(firmwareAtom);
   const serialState = useAtomValue(serialStateAtom);
+  const demo = useAtomValue(demoModeAtom);
+
+  const startDemoMode = () => {
+    if (demo) return;
+    startDemo();
+    pushToast(t("toast.demoStarted"));
+    onClose();
+  };
 
   return (
     <Modal open={open} onClose={onClose} label={t("about.title")}>
@@ -33,8 +42,18 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
 
       <div className="space-y-4 px-6 py-5 text-sm leading-relaxed text-ink-2">
         <p>{t("about.blurb")}</p>
-        <p>{t("about.demo")}</p>
 
+        {/* Feature list */}
+        <ul className="space-y-1.5">
+          {[t("about.feature1"), t("about.feature2"), t("about.feature3"), t("about.feature4")].map((f) => (
+            <li key={f} className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent-strong" />
+              <span>{f}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Live capability report */}
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <span className={MONO_CHIP}>{supportsSerial() ? "Web Serial ✓" : "Web Serial ✗"}</span>
           <span className={MONO_CHIP}>{serialState === "connected" ? "HID ✓" : "HID —"}</span>
@@ -42,18 +61,24 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
           <span className={MONO_CHIP}>CH9329 57600 8N1</span>
         </div>
 
-        <div className="border-t border-line/70 pt-3">
-          <p className={cn(META, "mb-2")}>Link protocol</p>
-          <div className="flex flex-wrap gap-1.5">
-            <Kbd>57 AB 00 CMD LEN DATA SUM</Kbd>
-            <Kbd>0x02 KB 8B</Kbd>
-            <Kbd>0x04 MS-ABS 6B</Kbd>
-            <Kbd>0x05 MS-REL 4B</Kbd>
-            <Kbd>0x01 GET_INFO</Kbd>
-          </div>
+        {/* Demo entry */}
+        <div className="border-t border-line/70 pt-4">
+          <button
+            type="button"
+            disabled={demo}
+            onClick={startDemoMode}
+            className={cn(
+              PAPER_STRIP,
+              STRIP_PRIMARY,
+              "flex w-full items-center justify-center gap-2",
+              demo && "opacity-50",
+            )}
+          >
+            <MonitorPlay aria-hidden="true" className="size-4" />
+            {demo ? t("about.demoRunning") : t("about.demoButton")}
+          </button>
+          <p className={cn(META, "mt-2")}>{t("about.demoNote")}</p>
         </div>
-
-        <p className={META}>{t("about.credits")}</p>
       </div>
     </Modal>
   );

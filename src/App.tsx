@@ -18,7 +18,6 @@ import {
   customResolutionsAtom,
   demoModeAtom,
   jigglerAtom,
-  macrosAtom,
   mouseModeAtom,
   mouseStyleAtom,
   resolutionAtom,
@@ -82,7 +81,6 @@ export default function App() {
   const mouseMode = useAtomValue(mouseModeAtom);
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const wheelInterval = useAtomValue(wheelIntervalAtom);
-  const macros = useAtomValue(macrosAtom);
   const statsVisible = useAtomValue(statsVisibleAtom);
   const toolbarCollapsed = useAtomValue(toolbarCollapsedAtom);
   const toolbarPos = useAtomValue(toolbarPosAtom);
@@ -102,7 +100,6 @@ export default function App() {
   useEffect(() => storage.setMouseMode(mouseMode), [mouseMode]);
   useEffect(() => storage.setWheelDirection(wheelDirection), [wheelDirection]);
   useEffect(() => storage.setWheelInterval(wheelInterval), [wheelInterval]);
-  useEffect(() => storage.setMacros(macros), [macros]);
   useEffect(() => storage.setStatsVisible(statsVisible), [statsVisible]);
   useEffect(() => storage.setToolbarCollapsed(toolbarCollapsed), [toolbarCollapsed]);
   useEffect(() => storage.setToolbarPos(toolbarPos), [toolbarPos]);
@@ -116,7 +113,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg pb-[calc(3.75rem+env(safe-area-inset-bottom))] text-ink md:pb-0">
+    <div className="flex min-h-dvh flex-col bg-bg text-ink">
       <a
         href="#video"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-100 focus:rounded-full focus:bg-accent-strong focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-contrast"

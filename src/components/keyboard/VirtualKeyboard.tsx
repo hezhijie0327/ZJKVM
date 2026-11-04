@@ -5,24 +5,33 @@
  *  modifier+key and releases everything; tapping the same modifier again
  *  presses-and-releases it alone. */
 
-import { X } from "lucide-react";
+import { ArrowBigUp, type LucideIcon, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { getOperatingSystem } from "@/lib/browser";
 import { cn } from "@/lib/cn";
 import { requireLink } from "@/lib/device/device";
 import { KeyboardReport } from "@/lib/device/keyboard-report";
 import { isModifier } from "@/lib/device/keymap";
 import { useI18n } from "@/lib/i18n";
 import * as storage from "@/lib/storage";
-import { EYEBROW, SEGMENT, SEGMENT_ITEM_OFF, SEGMENT_ITEM_ON, TAPE } from "@/lib/styles";
+import { EYEBROW, TAPE } from "@/lib/styles";
 
 interface VKey {
   code: string;
   label: string;
   width?: number; // in key units
+  /** Shifted glyph printed at the keycap's top-left corner (MX Keys style) */
+  shift?: string;
+  icon?: LucideIcon;
 }
 
-const K = (code: string, label?: string, width?: number): VKey => ({ code, label: label ?? code, width });
+const K = (code: string, label?: string, width?: number, shift?: string): VKey => ({
+  code,
+  label: label ?? code,
+  width,
+  shift,
+});
 
 const ROWS: VKey[][] = [
   [
@@ -41,19 +50,19 @@ const ROWS: VKey[][] = [
     K("F12"),
   ],
   [
-    K("Backquote", "`"),
-    K("Digit1", "1"),
-    K("Digit2", "2"),
-    K("Digit3", "3"),
-    K("Digit4", "4"),
-    K("Digit5", "5"),
-    K("Digit6", "6"),
-    K("Digit7", "7"),
-    K("Digit8", "8"),
-    K("Digit9", "9"),
-    K("Digit0", "0"),
-    K("Minus", "-"),
-    K("Equal", "="),
+    K("Backquote", "`", undefined, "~"),
+    K("Digit1", "1", undefined, "!"),
+    K("Digit2", "2", undefined, "@"),
+    K("Digit3", "3", undefined, "#"),
+    K("Digit4", "4", undefined, "$"),
+    K("Digit5", "5", undefined, "%"),
+    K("Digit6", "6", undefined, "^"),
+    K("Digit7", "7", undefined, "&"),
+    K("Digit8", "8", undefined, "*"),
+    K("Digit9", "9", undefined, "("),
+    K("Digit0", "0", undefined, ")"),
+    K("Minus", "-", undefined, "_"),
+    K("Equal", "=", undefined, "+"),
     K("Backspace", "⌫", 2),
   ],
   [
@@ -68,9 +77,9 @@ const ROWS: VKey[][] = [
     K("KeyI", "i"),
     K("KeyO", "o"),
     K("KeyP", "p"),
-    K("BracketLeft", "["),
-    K("BracketRight", "]"),
-    K("Backslash", "\\", 1.5),
+    K("BracketLeft", "[", undefined, "{"),
+    K("BracketRight", "]", undefined, "}"),
+    K("Backslash", "\\", 1.5, "|"),
   ],
   [
     K("CapsLock", "Caps", 1.8),
@@ -83,8 +92,8 @@ const ROWS: VKey[][] = [
     K("KeyJ", "j"),
     K("KeyK", "k"),
     K("KeyL", "l"),
-    K("Semicolon", ";"),
-    K("Quote", "'"),
+    K("Semicolon", ";", undefined, ":"),
+    K("Quote", "'", undefined, '"'),
     K("Enter", "⏎", 2.2),
   ],
   [
@@ -96,17 +105,19 @@ const ROWS: VKey[][] = [
     K("KeyB", "b"),
     K("KeyN", "n"),
     K("KeyM", "m"),
-    K("Comma", ","),
-    K("Period", "."),
-    K("Slash", "/"),
+    K("Comma", ",", undefined, "<"),
+    K("Period", ".", undefined, ">"),
+    K("Slash", "/", undefined, "?"),
     K("ShiftRight", "Shift", 2.3),
   ],
   [
+    // Right side mirrors an Apple/MX keyboard: Alt⌥, Cmd⌘ (MetaRight), Ctrl
     K("ControlLeft", "Ctrl", 1.5),
     K("MetaLeft", "Win", 1.5),
     K("AltLeft", "Alt", 1.2),
-    K("Space", "", 7),
+    K("Space", "", 6.9),
     K("AltRight", "Alt", 1.2),
+    K("MetaRight", "Win", 1.2),
     K("ControlRight", "Ctrl", 1.5),
   ],
 ];
@@ -124,6 +135,24 @@ const CONTROL_KEYS: VKey[] = [
 ];
 
 const ARROWS: VKey[] = [K("ArrowUp", "↑"), K("ArrowLeft", "←"), K("ArrowDown", "↓"), K("ArrowRight", "→")];
+
+/** Modifier dual legends (MX Keys style): both OS flavors printed on the same
+ *  keycap — the local machine's flavor gets the bright legend, the other is
+ *  dimmed. The HID codes are positional and identical; MetaLeft is Cmd on a
+ *  macOS target. No toggle needed: both names are always visible. */
+const MODIFIER_LEGENDS: Record<string, { win: string; mac: string }> = {
+  MetaLeft: { win: "Win", mac: "⌘ Cmd" },
+  MetaRight: { win: "Win", mac: "⌘ Cmd" },
+  AltLeft: { win: "Alt", mac: "⌥ Opt" },
+  AltRight: { win: "Alt", mac: "⌥ Opt" },
+};
+/** Compact macOS forms for the tight mobile rows (single legend there). */
+const MAC_LABELS_COMPACT: Record<string, string> = {
+  MetaLeft: "⌘",
+  MetaRight: "⌘",
+  AltLeft: "⌥",
+  AltRight: "⌥",
+};
 
 /** Full numpad cluster: 4-column grid, + and ⏎ span two rows, 0 spans two columns. */
 const NUMPAD: VKey[][] = [
@@ -171,10 +200,9 @@ const MOBILE_BASE: VKey[][] = [
     K("KeyJ", "j"),
     K("KeyK", "k"),
     K("KeyL", "l"),
-    K("Backspace", "⌫"),
   ],
   [
-    K("ShiftLeft", "Shift"),
+    { code: "ShiftLeft", label: "Shift", icon: ArrowBigUp },
     K("KeyZ", "z"),
     K("KeyX", "x"),
     K("KeyC", "c"),
@@ -185,6 +213,7 @@ const MOBILE_BASE: VKey[][] = [
     K("Comma", ","),
     K("Period", "."),
     K("Slash", "/"),
+    K("Backspace", "⌫"),
   ],
 ];
 
@@ -211,12 +240,12 @@ const MOBILE_FN: VKey[][] = [
   [K("ArrowUp", "↑"), K("ArrowLeft", "←"), K("ArrowDown", "↓"), K("ArrowRight", "→")],
 ];
 
+/* Num layer: 4 rows like the other layers, so the sheet keeps one height. */
 const MOBILE_NUM: VKey[][] = [
   [K("NumLock", "Num"), K("NumpadDivide", "/"), K("NumpadMultiply", "*"), K("NumpadSubtract", "-")],
   [K("Numpad7", "7"), K("Numpad8", "8"), K("Numpad9", "9"), K("NumpadAdd", "+")],
-  [K("Numpad4", "4"), K("Numpad5", "5"), K("Numpad6", "6"), K("NumpadEnter", "⏎")],
-  [K("Numpad1", "1"), K("Numpad2", "2"), K("Numpad3", "3"), K("NumpadDecimal", ".")],
-  [K("Numpad0", "0")],
+  [K("Numpad4", "4"), K("Numpad5", "5"), K("Numpad6", "6"), K("NumpadDecimal", ".")],
+  [K("Numpad1", "1"), K("Numpad2", "2"), K("Numpad3", "3"), K("NumpadEnter", "⏎"), K("Numpad0", "0")],
 ];
 
 type MobileLayer = "base" | "fn" | "num";
@@ -234,6 +263,7 @@ const clampPos = (pos: Pos, width: number, height: number): Pos => ({
 export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
+  const isMac = getOperatingSystem() === "macOS";
   const reportRef = useRef(new KeyboardReport());
   const latchedRef = useRef(new Set<string>());
   const [pressed, setPressed] = useState<Set<string>>(new Set());
@@ -246,6 +276,10 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   posRef.current = pos;
   const [layer, setLayer] = useState<MobileLayer>("base");
 
+  /* Quick system keys above the numpad (the MX Keys lock/app cluster):
+     icon keycaps with a tooltip naming the action and the chord it maps to.
+     Chords follow the local machine's flavor — app switch is Alt+Tab for a
+     Windows target, ⌘Tab for a macOS one. */
   useLayoutEffect(() => {
     if (isMobile || !panelRef.current) return;
     const el = panelRef.current;
@@ -318,8 +352,13 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       return;
     }
     await send(reportRef.current.keyDown(key.code));
-    // phone-style: Fn/Num layers fall back to letters after one tap
-    if (isMobile && layer !== "base" && !isModifier(key.code)) {
+    // phone-style: Fn/Num layers fall back to letters after one tap. Tap =
+    // press AND release right here — switching the layer unmounts this key,
+    // so the pointerup would land nowhere and the key would stick down on
+    // the target machine.
+    if (isMobile && layer !== "base") {
+      await send(reportRef.current.keyUp(key.code));
+      visualRelease(key.code);
       setLayer("base");
     }
   };
@@ -349,39 +388,70 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     };
   }, [send]);
 
-  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean) => (
-    <button
-      key={key.code}
-      type="button"
-      aria-label={key.label || key.code}
-      data-pressed={pressed.has(key.code) || undefined}
-      className={cn("kvm-key select-none touch-none", extraClass)}
-      style={{
-        // inline (not a utility) on purpose: .kvm-key's unlayered min-width
-        // would beat min-w-0 and force narrow mobile rows to overflow
-        ...(skipWidth ? { minWidth: 0 } : key.width ? { minWidth: `${key.width * 2}rem` } : undefined),
-        // kvm-key pins a fixed height; spanning keys must fill their grid area
-        ...(fullHeight ? { height: "auto", minHeight: "100%" } : undefined),
-      }}
-      onPointerDown={(event) => {
-        event.preventDefault();
-        void keyPress(key);
-      }}
-      onPointerUp={() => void keyRelease(key)}
-      onPointerLeave={() => {
-        if (pressed.has(key.code) && !isModifier(key.code)) void keyRelease(key);
-      }}
-      onContextMenu={(event) => event.preventDefault()}
-    >
-      {key.label || key.code}
-    </button>
-  );
+  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean, grow?: boolean) => {
+    const legend = MODIFIER_LEGENDS[key.code];
+    let primary = key.label || key.code;
+    let secondary: string | undefined;
+    if (legend && !isMobile) {
+      // Both flavors printed; the local machine's gets the bright legend.
+      primary = isMac ? legend.mac : legend.win;
+      secondary = isMac ? legend.win : legend.mac;
+    } else if (legend && isMobile) {
+      // Same dual-OS idea, mobile-stacked: the local flavor's glyph on top,
+      // the other OS's short name dimmed under it.
+      primary = isMac ? MAC_LABELS_COMPACT[key.code]! : legend.win;
+      secondary = isMac ? legend.win.split(" ")[0]! : legend.mac.split(" ")[0]!;
+    }
+    return (
+      <button
+        key={key.code}
+        type="button"
+        aria-label={secondary ? `${primary} (${secondary})` : primary}
+        data-pressed={pressed.has(key.code) || undefined}
+        className={cn("kvm-key select-none touch-none relative", secondary && "kvm-key--stack", extraClass)}
+        style={{
+          // inline (not a utility) on purpose: .kvm-key's unlayered min-width
+          // would beat min-w-0 and force narrow mobile rows to overflow
+          ...(skipWidth ? { minWidth: 0 } : key.width ? { minWidth: `${key.width * 2}rem` } : undefined),
+          // grow rows: keys share a fixed-width row proportionally to their
+          // width units, so every row's edges land flush regardless of how
+          // many keys/gaps it has (rows differ by up to 3 gaps otherwise)
+          ...(grow ? { flex: `${key.width ?? 1} 1 0%`, minWidth: 0 } : undefined),
+          // kvm-key pins a fixed height; spanning keys must fill their grid area
+          ...(fullHeight ? { height: "auto", minHeight: "100%" } : undefined),
+        }}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          void keyPress(key);
+        }}
+        onPointerUp={() => void keyRelease(key)}
+        onPointerLeave={() => {
+          if (pressed.has(key.code) && !isModifier(key.code)) void keyRelease(key);
+        }}
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        {!isMobile && key.shift && (
+          <span aria-hidden="true" className="absolute left-1 top-0.5 text-[8px] leading-none text-ink-3">
+            {key.shift}
+          </span>
+        )}
+        {key.icon ? <key.icon aria-hidden="true" className="size-4" /> : <span>{primary}</span>}
+        {secondary && (
+          <span aria-hidden="true" className="text-[9px] leading-none text-ink-3">
+            {secondary}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <div
       ref={panelRef}
       className={cn(
-        "z-80 select-none border-line bg-surface shadow-pop",
+        // below the toolbar tree (z-40, popover z-90 inside it) so an open
+        // panel always stays readable; the panel auto-closes on toggle
+        "z-30 select-none border-line bg-surface shadow-pop",
         isMobile ? "fixed inset-x-0 bottom-0 rounded-t-2xl border-t backdrop-blur-md" : "fixed rounded-2xl border",
       )}
       style={isMobile ? undefined : { left: pos?.x ?? -9999, top: pos?.y ?? -9999, opacity: pos ? 1 : 0 }}
@@ -417,63 +487,68 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {/* Mobile: 10-key layers that always fit the screen — no horizontal
-          scrolling. Fn layer holds F-keys/controls, Num layer the numpad;
-          both fall back to the letter layer after a tap. */}
+      {/* Mobile: iOS-style layers that always fit the screen — no horizontal
+          scrolling. Layer switches live in the bottom row (123/ABC + Fn, like
+          the iOS keyboard), modifiers stay next to the wide Space for chord
+          latching, and ⏎ is the accent action key. Alt layers fall back to
+          the letter layer after a tap. */}
       {isMobile ? (
         <div className="px-2 pb-3 pt-1">
-          <div className={cn(SEGMENT, "mx-auto mb-1.5 w-fit")}>
-            {(
-              [
-                { id: "base", label: "ABC" },
-                { id: "fn", label: "Fn" },
-                { id: "num", label: "123" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                aria-pressed={layer === tab.id}
-                className={cn(layer === tab.id ? SEGMENT_ITEM_ON : SEGMENT_ITEM_OFF)}
-                onClick={() => setLayer(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
           <div className="flex flex-col gap-1.5">
             {(layer === "base" ? MOBILE_BASE : layer === "fn" ? MOBILE_FN : MOBILE_NUM).map((row) => (
               <div key={row[0]?.code ?? row.length} className="flex gap-1">
                 {row.map((k) => renderKey(k, "min-w-0 flex-1 h-10", false, true))}
               </div>
             ))}
-            {layer === "base" && (
-              <div className="flex gap-1">
-                {renderKey(K("ControlLeft", "Ctrl"), "min-w-0 flex-1 h-10", false, true)}
-                {renderKey(K("MetaLeft", "Win"), "min-w-0 flex-1 h-10", false, true)}
-                {renderKey(K("AltLeft", "Alt"), "min-w-0 flex-1 h-10", false, true)}
-                {renderKey(K("Space", ""), "min-w-0 flex-[3] h-10", false, true)}
-                {renderKey(K("Enter", "⏎"), "min-w-0 flex-1 h-10", false, true)}
-              </div>
-            )}
+            <div className="flex gap-1">
+              <button
+                type="button"
+                aria-pressed={layer !== "base"}
+                className={cn(
+                  "kvm-key kvm-key--special min-w-0 flex-1 h-10 select-none touch-none",
+                  layer !== "base" && "kvm-key--action",
+                )}
+                onClick={() => setLayer(layer === "base" ? "num" : "base")}
+              >
+                {layer === "base" ? "123" : "ABC"}
+              </button>
+              <button
+                type="button"
+                aria-pressed={layer === "fn"}
+                className={cn(
+                  "kvm-key kvm-key--special min-w-0 flex-1 h-10 select-none touch-none",
+                  layer === "fn" && "kvm-key--action",
+                )}
+                onClick={() => setLayer(layer === "fn" ? "base" : "fn")}
+              >
+                Fn
+              </button>
+              {renderKey(K("ControlLeft", "Ctrl"), "min-w-0 flex-1 h-10", false, true)}
+              {renderKey(K("MetaLeft", "Win"), "min-w-0 flex-1 h-10", false, true)}
+              {renderKey(K("AltLeft", "Alt"), "min-w-0 flex-1 h-10", false, true)}
+              {renderKey(K("Space", ""), "min-w-0 flex-[2.5] h-10", false, true)}
+              {renderKey(K("Enter", "⏎"), "min-w-0 flex-[1.4] h-10 kvm-key--action", false, true)}
+            </div>
           </div>
         </div>
       ) : (
         /* Desktop: centered keyboard group — main block + control/arrows +
-            numpad clusters. */
+            numpad clusters. Main-block rows are one fixed width; keys flex
+            proportionally to their width units so all six rows end flush. */
         <div className="overflow-x-auto px-4 pb-4 pt-1">
           <div className="mx-auto flex w-fit max-w-full items-start gap-4">
-            <div className="flex min-w-fit flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               {ROWS.map((row) => (
-                <div key={row[0]?.code ?? row.length} className="flex gap-1.5">
-                  {row.map((k) => renderKey(k))}
+                <div key={row[0]?.code ?? row.length} className="flex w-[34.875rem] gap-1.5">
+                  {row.map((k) => renderKey(k, undefined, false, false, true))}
                 </div>
               ))}
             </div>
 
-            {/* Control cluster + arrows (wide screens) */}
-            <div className="hidden shrink-0 flex-col justify-between gap-1.5 md:flex">
+            {/* Control cluster + arrows (wide screens). self-stretch lets
+                justify-between drop the arrows to the bottom row — ↑ sits on
+                the Shift row and ←↓→ on the Ctrl row, like MX Keys. */}
+            <div className="hidden shrink-0 flex-col justify-between gap-1.5 self-stretch md:flex">
               <div className="grid grid-cols-3 gap-1.5">{CONTROL_KEYS.map((k) => renderKey(k))}</div>
               <div className="grid grid-cols-3 gap-1.5">
                 <span />
@@ -485,8 +560,9 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            {/* Numpad (wide screens) */}
-            <div className="hidden shrink-0 grid-cols-4 gap-1.5 md:grid">
+            {/* Numpad (wide screens): starts one row down (number row) so its
+                bottom lands on the Ctrl row, matching the main block. */}
+            <div className="hidden shrink-0 gap-1.5 md:mt-[2.625rem] md:grid md:grid-cols-4">
               {renderKey(NUMPAD[0]![0]!)}
               {renderKey(NUMPAD[0]![1]!)}
               {renderKey(NUMPAD[0]![2]!)}

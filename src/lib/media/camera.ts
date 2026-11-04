@@ -84,15 +84,17 @@ export async function ensureCameraPermission(): Promise<boolean> {
   return requestPermission("camera");
 }
 
+/** Capture-card-looking label (HDMI/USB capture dongles). Virtual cameras
+ *  (OBS etc.) don't match — the KVM only lists real capture hardware. */
+export function isCaptureLike(label: string): boolean {
+  return /hdmi|capture|采集|usb|ms21|macrosilicon|avermedia|elgato|nanokvm/i.test(label);
+}
+
 /** Pick a sensible default capture card: prefer HDMI/USB-capture-looking
  *  labels (the dongle next to a built-in webcam), fall back to the first. */
 export function pickCaptureDevice(devices: MediaDevice[]): MediaDevice | null {
   if (devices.length === 0) return null;
-  return (
-    devices.find((d) => /hdmi|capture|采集|usb|ms21|macrosilicon|avermedia|elgato|nanokvm/i.test(d.label)) ??
-    devices[0] ??
-    null
-  );
+  return devices.find((d) => isCaptureLike(d.label)) ?? devices[0] ?? null;
 }
 
 /** Pair a capture card's audio input with its video by groupId. */

@@ -62,7 +62,11 @@ export function PhysicalKeyboard() {
       event.stopPropagation();
 
       const code = normalizeKeyCode(event, os);
-      if (!code || pressedKeys.current.has(code)) {
+      // Locking keys are toggles — several browsers deliver only the keydown
+      // (the keyup never comes), so deduping on "already pressed" would
+      // swallow every following press. Forward each one.
+      const isLockKey = code === "CapsLock" || code === "NumLock" || code === "ScrollLock";
+      if (!code || (!isLockKey && pressedKeys.current.has(code))) {
         return;
       }
 

@@ -50,13 +50,45 @@ export function RelativeMouse() {
       event.stopPropagation();
     };
 
+    // While locked, physical clicks (incl. side buttons 3/4) forward as
+    // relative button reports — before this, locked mode could move the
+    // cursor but never click anything.
+    const handleButtonDown = async (event: MouseEvent) => {
+      if (document.pointerLockElement !== screen) return;
+      event.preventDefault();
+      mouseRef.current.buttonDown(event.button);
+      const report = mouseRef.current.buildReport(0, 0, 0);
+      try {
+        await requireLink().sendMouseData([MOUSE_MARKER.relative, ...report]);
+      } catch {
+        // link dropped
+      }
+      mouseJiggler.notifyMovement();
+    };
+
+    const handleButtonUp = async (event: MouseEvent) => {
+      if (document.pointerLockElement !== screen) return;
+      event.preventDefault();
+      mouseRef.current.buttonUp(event.button);
+      const report = mouseRef.current.buildReport(0, 0, 0);
+      try {
+        await requireLink().sendMouseData([MOUSE_MARKER.relative, ...report]);
+      } catch {
+        // link dropped
+      }
+    };
+
     screen.addEventListener("click", handleClick);
+    screen.addEventListener("mousedown", handleButtonDown);
+    screen.addEventListener("mouseup", handleButtonUp);
     screen.addEventListener("mousemove", handleMove);
     screen.addEventListener("wheel", disable, { passive: false });
     screen.addEventListener("contextmenu", disable);
 
     return () => {
       screen.removeEventListener("click", handleClick);
+      screen.removeEventListener("mousedown", handleButtonDown);
+      screen.removeEventListener("mouseup", handleButtonUp);
       screen.removeEventListener("mousemove", handleMove);
       screen.removeEventListener("wheel", disable);
       screen.removeEventListener("contextmenu", disable);
