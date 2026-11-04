@@ -10,12 +10,21 @@ import { isCaptureLike } from "@/lib/media/camera";
 import { ALERT_DANGER, CARD, EYEBROW, META, PAPER_STRIP, STRIP_PAPER, TAPE } from "@/lib/styles";
 import {
   connectGateChannelAtom,
+  micGrantedAtom,
   serialStateAtom,
   videoDeviceIdAtom,
   videoDevicesAtom,
   videoStateAtom,
 } from "@/state/atoms";
-import { connectVideo, openSerial, probeVideoDevices, refreshVideoDevices } from "@/state/connection";
+import {
+  connectVideo,
+  disconnectSerial,
+  disconnectVideo,
+  grantMic,
+  openSerial,
+  probeVideoDevices,
+  refreshVideoDevices,
+} from "@/state/connection";
 
 /** Connect gate: hardware auth + device picks only (capture card + HID
  *  serial) — a compact card docked to the bottom-left corner (above the
@@ -30,6 +39,7 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
   const videoDeviceId = useAtomValue(videoDeviceIdAtom);
   const videoState = useAtomValue(videoStateAtom);
   const serialState = useAtomValue(serialStateAtom);
+  const micGranted = useAtomValue(micGrantedAtom);
 
   const [picked, setPicked] = useState(videoDeviceId);
   const [videoBusy, setVideoBusy] = useState(false);
@@ -141,7 +151,11 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
             <Button variant="primary" className="mt-2 w-full" onClick={handleVideo} disabled={!picked || videoBusy}>
               {videoBusy ? t("connect.connecting") : t("connect.openVideo")}
             </Button>
-            {videoState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.video")}</p>}
+            {videoState === "connected" && (
+              <Button className="mt-2 w-full" onClick={disconnectVideo}>
+                {t("status.disconnectVideo")}
+              </Button>
+            )}
             {videoState !== "connected" && <p className={cn(META, "mt-2")}>{t("connect.authHint")}</p>}
           </div>
         )}
@@ -164,7 +178,23 @@ export function ConnectGate({ open, onClose }: { open: boolean; onClose: () => v
                 {t("browser.serialMissing")}
               </p>
             )}
+            {serialState === "connected" && (
+              <Button className="mt-2 w-full" onClick={() => void disconnectSerial()}>
+                {t("status.disconnectSerial")}
+              </Button>
+            )}
             {serialState === "connected" && <p className={cn(META, "mt-2")}>✓ {t("status.serial")}</p>}
+          </div>
+        )}
+
+        {/* Microphone (capture-card audio) — hidden on the serial slice */}
+        {channel !== "serial" && micGranted !== null && (
+          <div className="px-4 py-3">
+            <p className="text-sm font-medium text-ink">{t("audio.mic")}</p>
+            <p className={cn(META, "mt-0.5")}>{micGranted ? t("audio.micGrantedHint") : t("audio.micHint")}</p>
+            <Button className="mt-2 w-full" onClick={() => void grantMic()} disabled={micGranted}>
+              {micGranted ? t("audio.micGranted") : t("audio.micRequest")}
+            </Button>
           </div>
         )}
 

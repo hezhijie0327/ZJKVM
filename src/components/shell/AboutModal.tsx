@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { EYEBROW, META, MONO_CHIP, PAPER_STRIP, STRIP_PRIMARY, TAPE } from "@/lib/styles";
 import { demoModeAtom, firmwareAtom, serialStateAtom } from "@/state/atoms";
-import { startDemo } from "@/state/connection";
+import { startDemo, stopDemoMode } from "@/state/connection";
 import { pushToast } from "@/state/toast";
 
 /** About dialog: product introduction, live capability report, demo entry. */
@@ -16,11 +16,13 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
   const serialState = useAtomValue(serialStateAtom);
   const demo = useAtomValue(demoModeAtom);
 
-  const startDemoMode = () => {
-    if (demo) return;
-    startDemo();
-    pushToast(t("toast.demoStarted"));
-    onClose();
+  const toggleDemo = () => {
+    if (demo) {
+      stopDemoMode();
+    } else {
+      startDemo();
+      pushToast(t("toast.demoStarted"));
+    }
   };
 
   return (
@@ -65,17 +67,16 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="border-t border-line/70 pt-4">
           <button
             type="button"
-            disabled={demo}
-            onClick={startDemoMode}
+            onClick={toggleDemo}
             className={cn(
               PAPER_STRIP,
               STRIP_PRIMARY,
               "flex w-full items-center justify-center gap-2",
-              demo && "opacity-50",
+              demo && "opacity-70",
             )}
           >
             <MonitorPlay aria-hidden="true" className="size-4" />
-            {demo ? t("about.demoRunning") : t("about.demoButton")}
+            {demo ? t("about.demoStop") : t("about.demoButton")}
           </button>
           <p className={cn(META, "mt-2")}>{t("about.demoNote")}</p>
         </div>

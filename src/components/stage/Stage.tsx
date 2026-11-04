@@ -12,6 +12,8 @@ import {
   demoModeAtom,
   mouseStyleAtom,
   mutedAtom,
+  recordingAtom,
+  recordingDurationAtom,
   rotationAtom,
   scaleModeAtom,
   statsVisibleAtom,
@@ -32,6 +34,8 @@ export function Stage() {
   const mouseStyle = useAtomValue(mouseStyleAtom);
   const demo = useAtomValue(demoModeAtom);
   const statsVisible = useAtomValue(statsVisibleAtom);
+  const recording = useAtomValue(recordingAtom);
+  const recordingDuration = useAtomValue(recordingDurationAtom);
   const volume = useAtomValue(volumeAtom);
   const muted = useAtomValue(mutedAtom);
   const setStats = useSetAtom(videoStatsAtom);
@@ -136,6 +140,17 @@ export function Stage() {
         </div>
       )}
 
+      {/* Recording badge lives on the stage (top-right) on every breakpoint —
+          one element, same position, no per-view divergence. */}
+      {recording && (
+        <div className="absolute top-2 right-3 z-30">
+          <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
+            <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
+            REC {formatDuration(recordingDuration)}
+          </span>
+        </div>
+      )}
+
       {stream && hdmiSilent && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
           <span className={cn(MONO_CHIP, "border-warning/60 bg-warning/10 px-3 py-1 text-warning")}>
@@ -192,4 +207,10 @@ function NoSignal({ onConnect }: { onConnect: () => void }) {
       </div>
     </div>
   );
+}
+
+function formatDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }

@@ -9,6 +9,7 @@ import { Navigation } from "@/components/shell/Navigation";
 import { Statusbar } from "@/components/shell/Statusbar";
 import { Stage } from "@/components/stage/Stage";
 import { Toasts } from "@/components/ui/Toasts";
+import { siteConfig } from "@/config/site";
 import { mouseJiggler } from "@/lib/mouse-jiggler";
 import * as storage from "@/lib/storage";
 import { watchSystemTheme } from "@/lib/theme";
@@ -126,6 +127,14 @@ export default function App() {
       <Stage />
 
       <Statusbar />
+
+      {/* Mobile: the ZJBlog-style footer line — the desktop statusbar strip is
+          hidden on small screens, so the copyright keeps its centered home. */}
+      <div className="flex h-9 items-center justify-center border-t border-line/80 bg-bg font-mono text-[11px] text-ink-3 md:hidden">
+        <span aria-hidden="true">
+          © {new Date().getFullYear()} {siteConfig.copyright}
+        </span>
+      </div>
 
       <PhysicalKeyboard />
       <MouseInput />

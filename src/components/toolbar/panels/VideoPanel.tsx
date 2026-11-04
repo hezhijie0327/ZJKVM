@@ -7,6 +7,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
+import { isCaptureLike } from "@/lib/media/camera";
 import * as storage from "@/lib/storage";
 import { DIVIDE_LIST, META, PANEL_COL, PANEL_ROW } from "@/lib/styles";
 import {
@@ -34,7 +35,7 @@ const RES_KEY = (r: Resolution) => `${r.width}x${r.height}`;
 
 export function VideoPanel() {
   const { t } = useI18n();
-  const devices = useAtomValue(videoDevicesAtom);
+  const allDevices = useAtomValue(videoDevicesAtom);
   const [deviceId, setDeviceId] = useAtom(videoDeviceIdAtom);
   const [resolution, setResolution] = useAtom(resolutionAtom);
   const [customs, setCustoms] = useAtom(customResolutionsAtom);
@@ -43,6 +44,12 @@ export function VideoPanel() {
   const [stats, setStats] = useAtom(statsVisibleAtom);
 
   const [customWidth, setCustomWidth] = useState("");
+  // KVM 视角只关心采集卡:虚拟摄像头(OBS 等)不属于这条链路。若全部设备
+  // 都不像采集卡(特殊命名),兜底显示全部,避免真卡从列表消失。
+  const devices = (() => {
+    const captures = allDevices.filter((d) => isCaptureLike(d.label));
+    return captures.length > 0 ? captures : allDevices;
+  })();
   const [customHeight, setCustomHeight] = useState("");
   const [customNote, setCustomNote] = useState<string | null>(null);
 
