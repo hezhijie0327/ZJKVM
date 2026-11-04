@@ -89,6 +89,28 @@ export function Stage() {
     videoEl.muted = muted;
   }, [videoEl, volume, muted]);
 
+  /* Stream healthy but zero frames = no HDMI signal on the capture card's
+     input (MS2133 keeps the track live and silent). Say so after 3 s. */
+  const [hdmiSilent, setHdmiSilent] = useState(false);
+  useEffect(() => {
+    if (!stream) {
+      setHdmiSilent(false);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const live = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
+      setHdmiSilent(!live);
+    }, 3000);
+    const timer2 = window.setTimeout(() => {
+      const live = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
+      setHdmiSilent(!live);
+    }, 3000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(timer2);
+    };
+  }, [stream, videoEl]);
+
   const transform = rotation === 0 ? undefined : `rotate(${rotation}deg)`;
   const zoom = scale === "auto" ? undefined : `scale(${scale})`;
 
@@ -109,6 +131,15 @@ export function Stage() {
         <div className="absolute top-2 left-3 z-30 flex gap-1.5">
           <span className={STATUS_CHIP}>{stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}</span>
           {stats.fps !== null && stats.fps > 0 && <span className={STATUS_CHIP}>{stats.fps} fps</span>}
+        </div>
+      )}
+
+      {stream && hdmiSilent && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <span className={cn(MONO_CHIP, "border-warning/60 bg-warning/10 px-3 py-1 text-warning")}>
+            <Radio aria-hidden="true" className="size-3" />
+            {t("stage.noHdmi")}
+          </span>
         </div>
       )}
 
