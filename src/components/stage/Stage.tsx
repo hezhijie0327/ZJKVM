@@ -163,7 +163,10 @@ export function Stage() {
       )}
 
       {demo && (
-        <p className="absolute bottom-3 left-3 z-30 hidden max-w-md md:block">
+        // Demo indicator on every breakpoint — mobile had none after the
+        // statusbar moved into the gate. Width capped so it never stretches
+        // past the viewport edge.
+        <p className="absolute bottom-3 left-3 z-30 max-w-[calc(100%-1.5rem)] md:max-w-md">
           <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
             <Radio aria-hidden="true" className="size-3" />
             {t("demo.banner")}

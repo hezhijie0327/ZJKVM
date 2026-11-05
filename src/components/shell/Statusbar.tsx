@@ -1,9 +1,11 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { STATUS_CHIP } from "@/lib/styles";
+import * as storage from "@/lib/storage";
+import { STATUS_CHIP, TOOLBAR } from "@/lib/styles";
 import {
   connectGateChannelAtom,
   connectGateOpenAtom,
@@ -44,10 +46,10 @@ function LedRow({ leds }: { leds: LedState }) {
   );
 }
 
-/** Bottom status strip: connection chips, lock LEDs, firmware, stats, rec timer.
- *  Video/serial chips double as reconnect affordances while disconnected —
- *  clicking one opens the connect gate (the gate auto-closes on success,
- *  which would otherwise leave no way to connect the serial port alone). */
+/** Desktop status chips: a floating glass pill docked above the centered
+ *  copyright line, same grammar as the toolbar. Collapsible (persisted) so
+ *  it can tuck away when not needed. Hidden on mobile — the connect gate
+ *  owns auth there and the footer is a plain centered copyright line. */
 export function Statusbar() {
   const { t } = useI18n();
   const videoState = useAtomValue(videoStateAtom);
@@ -59,6 +61,7 @@ export function Statusbar() {
   const micGranted = useAtomValue(micGrantedAtom);
   const setGateOpen = useSetAtom(connectGateOpenAtom);
   const setGateChannel = useSetAtom(connectGateChannelAtom);
+  const [collapsed, setCollapsed] = useState(storage.getChipsCollapsed());
 
   useEffect(() => {
     void checkMic();
@@ -69,115 +72,147 @@ export function Statusbar() {
     setGateOpen(true);
   };
 
-  /* Connection chips double as per-channel switches: a disconnected channel
-   * opens just its own slice of the connect gate; a connected one disconnects
-   * that channel alone. 演示 only appears while demo mode is running. */
-  /* Connection chips double as per-channel switches: a disconnected channel
-   * opens just its own slice of the connect gate; a connected one disconnects
-   * that channel alone. 演示 only appears while demo mode is running. */
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      storage.setChipsCollapsed(!prev);
+      return !prev;
+    });
+  };
+
+  const chips = (
+    <>
+      {demo && (
+        <button
+          type="button"
+          className={cn(STATUS_CHIP, "border-accent text-accent")}
+          title={t("status.demoStop")}
+          onClick={() => stopDemoMode()}
+        >
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
+          {t("status.demo")}
+        </button>
+      )}
+      <button
+        type="button"
+        className={cn(
+          STATUS_CHIP,
+          videoState === "connected" && "border-ok/60 text-ok",
+          videoState !== "connected" && "transition-colors hover:border-ink-3 hover:text-ink",
+        )}
+        title={videoState === "connected" ? t("status.disconnectVideo") : t("connect.title")}
+        onClick={() => (videoState === "connected" ? disconnectVideo() : openGate("video"))}
+      >
+        <span
+          aria-hidden="true"
+          className={cn("size-1.5 rounded-full", videoState === "connected" ? "bg-ok" : "bg-line")}
+        />
+        {t("status.video")}
+      </button>
+      <button
+        type="button"
+        className={cn(
+          STATUS_CHIP,
+          serialState === "connected" && "border-ok/60 text-ok",
+          serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
+        )}
+        title={
+          serialState === "connected"
+            ? t("status.disconnectSerial")
+            : serialState === "disconnected"
+              ? t("connect.serial")
+              : t("status.serial")
+        }
+        onClick={() =>
+          serialState === "connected" ? void disconnectSerial() : serialState === "disconnected" && openGate("serial")
+        }
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "size-1.5 rounded-full",
+            serialState === "connected" ? "bg-ok" : serialState === "connecting" ? "bg-warning" : "bg-line",
+          )}
+        />
+        {t("status.serial")}
+      </button>
+      {micGranted !== null && (
+        <button
+          type="button"
+          className={cn(
+            STATUS_CHIP,
+            micGranted ? "border-ok/60 text-ok" : "transition-colors hover:border-ink-3 hover:text-ink",
+          )}
+          title={micGranted ? t("audio.micGranted") : t("audio.micRequest")}
+          onClick={() => !micGranted && void grantMic()}
+        >
+          <span aria-hidden="true" className={cn("size-1.5 rounded-full", micGranted ? "bg-ok" : "bg-line")} />
+          {t("status.mic")}
+        </button>
+      )}
+      {usb !== null && (
+        <span
+          role="img"
+          aria-label={`${t("status.hid")} ${usb ? "on" : "off"}`}
+          className={cn(STATUS_CHIP, usb ? "border-ok/60 text-ok" : "border-warning/60 text-warning")}
+          title={t("status.hidHint")}
+        >
+          <span aria-hidden="true" className={cn("size-1.5 rounded-full", usb ? "bg-ok" : "bg-warning")} />
+          {t("status.hid")}
+        </span>
+      )}
+      <LedRow leds={leds} />
+      {firmware && <span className="hidden lg:inline">{t("status.fw", { v: firmware })}</span>}
+    </>
+  );
+
   return (
-    <footer className="relative hidden shrink-0 border-t border-line/80 bg-bg md:block">
-      <div className="flex h-9 items-center justify-between gap-3 overflow-x-auto px-3 font-mono text-[11px] whitespace-nowrap text-ink-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:px-4">
-        <div className="flex items-center gap-1.5 md:gap-1.5">
-          {demo && (
-            <button
-              type="button"
-              className={cn(STATUS_CHIP, "border-accent text-accent")}
-              title={t("status.demoStop")}
-              onClick={() => stopDemoMode()}
-            >
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
-              {t("status.demo")}
-            </button>
-          )}
+    <>
+      {/* Floating chips pill — same glass grammar as the toolbar, collapsible */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-11 z-40 hidden justify-center md:flex">
+        {collapsed ? (
           <button
             type="button"
-            className={cn(
-              STATUS_CHIP,
-              videoState === "connected" && "border-ok/60 text-ok",
-              videoState !== "connected" && "transition-colors hover:border-ink-3 hover:text-ink",
-            )}
-            title={videoState === "connected" ? t("status.disconnectVideo") : t("connect.title")}
-            onClick={() => (videoState === "connected" ? disconnectVideo() : openGate("video"))}
+            aria-expanded={false}
+            aria-label={t("status.expand")}
+            title={t("status.expand")}
+            onClick={toggleCollapsed}
+            className="pointer-events-auto grid size-9 place-items-center rounded-full border border-line/80 bg-bg/85 text-ink-2 shadow-pop backdrop-blur-md transition-colors hover:text-ink"
           >
-            <span
-              aria-hidden="true"
-              className={cn("size-1.5 rounded-full", videoState === "connected" ? "bg-ok" : "bg-line")}
-            />
-            {t("status.video")}
+            <ChevronUp aria-hidden="true" className="size-4" />
           </button>
-          <button
-            type="button"
-            className={cn(
-              STATUS_CHIP,
-              serialState === "connected" && "border-ok/60 text-ok",
-              serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
-            )}
-            title={
-              serialState === "connected"
-                ? t("status.disconnectSerial")
-                : serialState === "disconnected"
-                  ? t("connect.serial")
-                  : t("status.serial")
-            }
-            onClick={() =>
-              serialState === "connected"
-                ? void disconnectSerial()
-                : serialState === "disconnected" && openGate("serial")
-            }
+        ) : (
+          <div
+            className={cn(TOOLBAR, "pointer-events-auto max-w-[calc(100vw-2rem)]")}
+            role="status"
+            aria-label={t("status.chips")}
           >
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-1.5 rounded-full",
-                serialState === "connected" ? "bg-ok" : serialState === "connecting" ? "bg-warning" : "bg-line",
-              )}
-            />
-            {t("status.serial")}
-          </button>
-          {micGranted !== null && (
+            <div className="flex items-center gap-1.5 overflow-x-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {chips}
+            </div>
+            <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-line" />
             <button
               type="button"
-              className={cn(
-                STATUS_CHIP,
-                micGranted ? "border-ok/60 text-ok" : "transition-colors hover:border-ink-3 hover:text-ink",
-              )}
-              title={micGranted ? t("audio.micGranted") : t("audio.micRequest")}
-              onClick={() => !micGranted && void grantMic()}
+              aria-expanded
+              aria-label={t("status.collapse")}
+              title={t("status.collapse")}
+              onClick={toggleCollapsed}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:text-ink"
             >
-              <span aria-hidden="true" className={cn("size-1.5 rounded-full", micGranted ? "bg-ok" : "bg-line")} />
-              {t("status.mic")}
+              <ChevronDown aria-hidden="true" className="size-4" />
             </button>
-          )}
-          {usb !== null && (
-            <span
-              role="img"
-              aria-label={`${t("status.hid")} ${usb ? "on" : "off"}`}
-              className={cn(
-                STATUS_CHIP,
-                "hidden md:inline-flex",
-                usb ? "border-ok/60 text-ok" : "border-warning/60 text-warning",
-              )}
-              title={t("status.hidHint")}
-            >
-              <span aria-hidden="true" className={cn("size-1.5 rounded-full", usb ? "bg-ok" : "bg-warning")} />
-              {t("status.hid")}
-            </span>
-          )}
-          <span className="hidden items-center gap-1.5 md:inline-flex">
-            <LedRow leds={leds} />
-          </span>
-          {firmware && <span className="hidden sm:inline">{t("status.fw", { v: firmware })}</span>}
-          {/* Mobile: pinned right of the chips (no room for a centered copy) */}
-          <span aria-hidden="true" className="shrink-0 md:hidden">
-            © {siteConfig.copyright}
+          </div>
+        )}
+      </div>
+
+      {/* Centered copyright line (ZJBlog footer grammar) — the pill floats
+          above it, so the two layers can never collide. */}
+      <footer className="hidden shrink-0 border-t border-line/80 bg-bg md:block">
+        <div className="flex h-9 items-center justify-center font-mono text-[11px] text-ink-3">
+          <span aria-hidden="true">
+            © {new Date().getFullYear()} {siteConfig.copyright}
           </span>
         </div>
-      </div>
-      {/* Desktop: centered like the ZJBlog footer */}
-      <span aria-hidden="true" className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block">
-        © {new Date().getFullYear()} {siteConfig.copyright}
-      </span>
-    </footer>
+      </footer>
+    </>
   );
 }
