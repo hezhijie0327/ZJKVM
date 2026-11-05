@@ -129,8 +129,9 @@ export const setToolbarCollapsed = (v: boolean) => set(KEYS.toolbarCollapsed, St
 export const getToolbarPos = () => getJSON<{ x: number; y: number }>(KEYS.toolbarPos);
 export const setToolbarPos = (v: { x: number; y: number }) => set(KEYS.toolbarPos, JSON.stringify(v));
 
-/** Statusbar chips pill collapsed (desktop floating dock). */
-export const getChipsCollapsed = () => get(KEYS.chipsCollapsed) === "true";
+/** Statusbar chips pill collapsed — folded by default; only an explicit
+ *  expand (stored "false") keeps it open. */
+export const getChipsCollapsed = () => get(KEYS.chipsCollapsed) !== "false";
 export const setChipsCollapsed = (v: boolean) => set(KEYS.chipsCollapsed, String(v));
 
 export const getKeyboardPos = () => getJSON<{ x: number; y: number }>(KEYS.keyboardPos);

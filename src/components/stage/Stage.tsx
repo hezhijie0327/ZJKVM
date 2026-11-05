@@ -2,6 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useVideoStats } from "@/components/stage/useVideoStats";
+import { computeVideoRect } from "@/components/stage/videoRect";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -9,14 +10,13 @@ import { EYEBROW, GHOST_TEXT, META, MONO_CHIP, STATUS_CHIP } from "@/lib/styles"
 import {
   connectGateChannelAtom,
   connectGateOpenAtom,
-  demoModeAtom,
   mouseStyleAtom,
   mutedAtom,
+  pictureRectAtom,
   recordingAtom,
   recordingDurationAtom,
   rotationAtom,
   scaleModeAtom,
-  statsVisibleAtom,
   videoStatsAtom,
   videoStreamAtom,
   volumeAtom,
@@ -25,20 +25,20 @@ import { connectVideo } from "@/state/connection";
 import { pushToast } from "@/state/toast";
 
 /** The KVM stage: full-bleed ruled-paper surface, capture stream letterboxed
- *  in the middle, toolbar + stats floating above. */
+ *  in the middle, toolbar + REC floating above; video stats live in the
+ *  statusbar pill (Statusbar) so the picture content stays clean. */
 export function Stage() {
   const { t } = useI18n();
   const stream = useAtomValue(videoStreamAtom);
   const rotation = useAtomValue(rotationAtom);
   const scale = useAtomValue(scaleModeAtom);
   const mouseStyle = useAtomValue(mouseStyleAtom);
-  const demo = useAtomValue(demoModeAtom);
-  const statsVisible = useAtomValue(statsVisibleAtom);
   const recording = useAtomValue(recordingAtom);
   const recordingDuration = useAtomValue(recordingDurationAtom);
   const volume = useAtomValue(volumeAtom);
   const muted = useAtomValue(mutedAtom);
   const setStats = useSetAtom(videoStatsAtom);
+  const setPictureRect = useSetAtom(pictureRectAtom);
   const setGateOpen = useSetAtom(connectGateOpenAtom);
   const setGateChannel = useSetAtom(connectGateChannelAtom);
 
@@ -120,6 +120,37 @@ export function Stage() {
   const transform = rotation === 0 ? undefined : `rotate(${rotation}deg)`;
   const zoom = scale === "auto" ? undefined : `scale(${scale})`;
 
+  /* In-picture badge anchoring: the video letterboxes inside the stage, so
+     the badges ride the rendered content rect (videoRect math) instead of the
+     stage corners. The observer only re-renders on box changes — the rect
+     itself is derived from the live element each pass. */
+  const [stageBox, setStageBox] = useState<{ clientWidth: number; clientHeight: number } | null>(null);
+  useEffect(() => {
+    if (!videoEl) return;
+    const ro = new ResizeObserver(() =>
+      setStageBox({ clientWidth: videoEl.clientWidth, clientHeight: videoEl.clientHeight }),
+    );
+    ro.observe(videoEl);
+    return () => ro.disconnect();
+  }, [videoEl]);
+  const pictureRect = videoEl && stream ? computeVideoRect(videoEl, stageBox ?? videoEl, rotation, scale) : null;
+
+  /* Publish the picture rect in viewport coordinates for floating layers
+     (status chips pill). Rendered content is always centered on the element
+     (computeVideoRect centers, transforms scale/rotate about the center), so
+     the visual rect is the element's center box with dims swapped on 90/270. */
+  useEffect(() => {
+    if (!videoEl || !stream || !pictureRect) {
+      setPictureRect(null);
+      return;
+    }
+    const vr = videoEl.getBoundingClientRect();
+    const rotated = rotation === 90 || rotation === 270;
+    const w = rotated ? pictureRect.height : pictureRect.width;
+    const h = rotated ? pictureRect.width : pictureRect.height;
+    setPictureRect({ x: vr.x + vr.width / 2 - w / 2, y: vr.y + vr.height / 2 - h / 2, w, h });
+  }, [videoEl, stream, pictureRect, rotation, setPictureRect]);
+
   return (
     <main className="kvm-stage relative min-h-0 flex-1 overflow-hidden">
       {/* biome-ignore lint/a11y/useMediaCaption: live capture stream — there is no caption track */}
@@ -133,19 +164,17 @@ export function Stage() {
         style={{ transform: [transform, zoom].filter(Boolean).join(" ") || undefined }}
       />
 
-      {/* Corner badges drop one row below the toolbar pill on narrow screens
-          (the pill spans nearly full width there); desktop keeps the corners. */}
-      {statsVisible && stream && (
-        <div className="absolute top-16 left-3 z-30 flex gap-1.5 md:top-2">
-          <span className={STATUS_CHIP}>{stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}</span>
-          {stats.fps !== null && stats.fps > 0 && <span className={STATUS_CHIP}>{stats.fps} fps</span>}
-        </div>
-      )}
-
-      {/* Recording badge lives on the stage (top-right) on every breakpoint —
-          one element, same position, no per-view divergence. */}
+      {/* Recording badge rides the picture's top-right corner (letterbox-
+          aware) — the only overlay on the picture content itself. */}
       {recording && (
-        <div className="absolute top-16 right-3 z-30 md:top-2">
+        <div
+          className={cn("absolute z-30", pictureRect ? "-translate-x-full" : "top-16 right-3 md:top-2")}
+          style={
+            pictureRect
+              ? { left: pictureRect.offsetX + pictureRect.width - 10, top: pictureRect.offsetY + 10 }
+              : undefined
+          }
+        >
           <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
             <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
             REC {formatDuration(recordingDuration)}
@@ -160,18 +189,6 @@ export function Stage() {
             {t("stage.noHdmi")}
           </span>
         </div>
-      )}
-
-      {demo && (
-        // Demo indicator on every breakpoint — mobile had none after the
-        // statusbar moved into the gate. Width capped so it never stretches
-        // past the viewport edge.
-        <p className="absolute bottom-3 left-3 z-30 max-w-[calc(100%-1.5rem)] md:max-w-md">
-          <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
-            <Radio aria-hidden="true" className="size-3" />
-            {t("demo.banner")}
-          </span>
-        </p>
       )}
 
       {!stream && (

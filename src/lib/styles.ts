@@ -93,9 +93,11 @@ export const TOOLBAR =
 /** Toolbar divider dot between action groups */
 export const TOOLBAR_DIVIDER = "mx-0.5 h-5 w-px bg-line";
 
-/** Status bar chip: mono, hairline, stage-safe (sits over the statusbar) */
+/** Status bar chip: mono, hairline, stage-safe (sits over the statusbar).
+ *  shrink-0: inside the chips pill the row scrolls horizontally instead of
+ *  squeezing chips into two-line CJK wraps on narrow screens. */
 export const STATUS_CHIP =
-  "inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 font-mono text-[11px] text-ink-2";
+  "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 font-mono text-[11px] text-ink-2";
 
 /** Small key button on the virtual keyboard (visual base; .kvm-key carries the skin) */
 export const KEY = "kvm-key";

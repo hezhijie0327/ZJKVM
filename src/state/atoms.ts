@@ -53,6 +53,10 @@ export const videoStatsAtom = atom<{ width: number; height: number; fps: number 
   height: 0,
   fps: null,
 });
+/** Viewport-space rect of the rendered picture (letterbox + rotation + zoom
+ *  resolved), published by Stage so floating layers can dock to the video
+ *  content instead of the stage corners. */
+export const pictureRectAtom = atom<{ x: number; y: number; w: number; h: number } | null>(null);
 
 /* ── Recorder ── */
 export const recordingAtom = atom(false);

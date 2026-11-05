@@ -1,11 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/config/site";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import * as storage from "@/lib/storage";
-import { STATUS_CHIP, TOOLBAR } from "@/lib/styles";
+import { MONO_CHIP, STATUS_CHIP, TOOLBAR } from "@/lib/styles";
 import {
   connectGateChannelAtom,
   connectGateOpenAtom,
@@ -13,9 +14,13 @@ import {
   firmwareAtom,
   ledsAtom,
   micGrantedAtom,
+  pictureRectAtom,
   serialStateAtom,
+  statsVisibleAtom,
   usbConnectedAtom,
   videoStateAtom,
+  videoStatsAtom,
+  videoStreamAtom,
 } from "@/state/atoms";
 import { checkMic, disconnectSerial, disconnectVideo, grantMic, stopDemoMode } from "@/state/connection";
 import type { LedState } from "@/types";
@@ -38,7 +43,7 @@ function LedRow({ leds }: { leds: LedState }) {
   const { t } = useI18n();
   const hint = t("led.hint");
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex shrink-0 items-center gap-1">
       <LedChip label={t("led.num")} on={leds.num} hint={hint} />
       <LedChip label={t("led.caps")} on={leds.caps} hint={hint} />
       <LedChip label={t("led.scroll")} on={leds.scroll} hint={hint} />
@@ -46,10 +51,12 @@ function LedRow({ leds }: { leds: LedState }) {
   );
 }
 
-/** Desktop status chips: a floating glass pill docked above the centered
- *  copyright line, same grammar as the toolbar. Collapsible (persisted) so
- *  it can tuck away when not needed. Hidden on mobile — the connect gate
- *  owns auth there and the footer is a plain centered copyright line. */
+/** Bottom floating layer: demo banner stacked above the status-chips pill
+ *  (the single status surface — video stats included), one grammar on every
+ *  breakpoint. From `md` up with a live picture the stack docks inside the
+ *  rendered picture's bottom edge (picture rect published by Stage);
+ *  otherwise it floats above the centered copyright line. Collapsible
+ *  (persisted). */
 export function Statusbar() {
   const { t } = useI18n();
   const videoState = useAtomValue(videoStateAtom);
@@ -59,6 +66,12 @@ export function Statusbar() {
   const usb = useAtomValue(usbConnectedAtom);
   const firmware = useAtomValue(firmwareAtom);
   const micGranted = useAtomValue(micGrantedAtom);
+  const stream = useAtomValue(videoStreamAtom);
+  const stats = useAtomValue(videoStatsAtom);
+  const statsVisible = useAtomValue(statsVisibleAtom);
+  const pictureRect = useAtomValue(pictureRectAtom);
+  const isMobile = useIsMobile();
+  const inPicture = !isMobile && pictureRect !== null;
   const setGateOpen = useSetAtom(connectGateOpenAtom);
   const setGateChannel = useSetAtom(connectGateChannelAtom);
   const [collapsed, setCollapsed] = useState(storage.getChipsCollapsed());
@@ -81,6 +94,18 @@ export function Statusbar() {
 
   const chips = (
     <>
+      {statsVisible && stream && (
+        <>
+          <span className={STATUS_CHIP} title={t("status.statsHint")}>
+            {stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}
+          </span>
+          {stats.fps !== null && stats.fps > 0 && (
+            <span className={STATUS_CHIP} title={t("status.statsHint")}>
+              {stats.fps} fps
+            </span>
+          )}
+        </>
+      )}
       {demo && (
         <button
           type="button"
@@ -161,14 +186,37 @@ export function Statusbar() {
         </span>
       )}
       <LedRow leds={leds} />
-      {firmware && <span className="hidden lg:inline">{t("status.fw", { v: firmware })}</span>}
+      {firmware && <span className={cn(STATUS_CHIP, "hidden lg:inline-flex")}>{t("status.fw", { v: firmware })}</span>}
     </>
   );
 
   return (
     <>
-      {/* Floating chips pill — same glass grammar as the toolbar, collapsible */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-11 z-40 hidden justify-center md:flex">
+      {/* Floating bottom stack — demo banner above the chips pill so neither
+          layer can occlude the other. */}
+      <div
+        className={cn(
+          "pointer-events-none fixed z-40 flex flex-col items-center gap-2",
+          !inPicture && "inset-x-0 bottom-11",
+        )}
+        style={
+          inPicture && pictureRect
+            ? {
+                left: pictureRect.x,
+                width: pictureRect.w,
+                bottom: window.innerHeight - pictureRect.y - pictureRect.h + 10,
+              }
+            : undefined
+        }
+      >
+        {demo && (
+          <p className="pointer-events-none max-w-[min(28rem,100%)]">
+            <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
+              <Radio aria-hidden="true" className="size-3" />
+              {t("demo.banner")}
+            </span>
+          </p>
+        )}
         {collapsed ? (
           <button
             type="button"
@@ -182,7 +230,7 @@ export function Statusbar() {
           </button>
         ) : (
           <div
-            className={cn(TOOLBAR, "pointer-events-auto max-w-[calc(100vw-2rem)]")}
+            className={cn(TOOLBAR, "pointer-events-auto max-w-[min(100%,calc(100vw-2rem))]")}
             role="status"
             aria-label={t("status.chips")}
           >

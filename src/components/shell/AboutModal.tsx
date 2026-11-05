@@ -22,6 +22,8 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
     } else {
       startDemo();
       pushToast(t("toast.demoStarted"));
+      // Demo is the show — hand the stage over immediately.
+      onClose();
     }
   };
 
