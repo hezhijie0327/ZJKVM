@@ -33,7 +33,7 @@ Package manager is pnpm. `pnpm-workspace.yaml` whitelists esbuild's build script
 ## Conventions
 
 - Biome: 2-space, 120 cols, double quotes, named exports only (`export default` only for `App.tsx`). Unused suppression comments are flagged — keep `biome-ignore` lines directly above the exact node.
-- i18n: all UI strings via `useI18n().t()`; keys typed in `lib/i18n.tsx` (en is the source of truth, zh must mirror it). Module-scope code uses `state/t.ts`.
+- i18n: all UI strings via `useI18n().t()`; wordbooks live in `lib/i18n/` — `en.ts` is the baseline and source of `TKey`, `zh.ts` mirrors it key-for-key, and `lib/i18n.tsx` holds the provider/logic (same split as zjblog). Adding a locale = new `lib/i18n/<tag>.ts` + register in `CATALOGS`. Module-scope code uses `state/t.ts`.
 - Settings persist under `zjkvm-*` localStorage keys via `lib/storage.ts`; atoms initialize from it, `App.tsx` owns the persist effects.
 - Accessibility floor: a11y Lighthouse 100 — icon buttons need aria-label, switches are `role="switch"`, decorative tape/ghost text is `aria-hidden` + `pointer-events-none`, reduced-motion must keep working.
 - Serial connects only inside a user gesture (`navigator.serial.requestPort()`); boot auto-reconnect is camera-only.

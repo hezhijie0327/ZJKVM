@@ -2,7 +2,7 @@
  *  need t() outside the render tree; the I18nProvider installs the live
  *  translator on mount so they always speak the current language. */
 
-import type { TKey } from "@/lib/i18n";
+import type { TKey } from "@/lib/i18n/en";
 
 type Translator = (key: TKey, vars?: Record<string, string | number>) => string;
 
