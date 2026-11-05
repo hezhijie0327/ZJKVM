@@ -133,8 +133,10 @@ export function Stage() {
         style={{ transform: [transform, zoom].filter(Boolean).join(" ") || undefined }}
       />
 
+      {/* Corner badges drop one row below the toolbar pill on narrow screens
+          (the pill spans nearly full width there); desktop keeps the corners. */}
       {statsVisible && stream && (
-        <div className="absolute top-2 left-3 z-30 flex gap-1.5">
+        <div className="absolute top-16 left-3 z-30 flex gap-1.5 md:top-2">
           <span className={STATUS_CHIP}>{stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}</span>
           {stats.fps !== null && stats.fps > 0 && <span className={STATUS_CHIP}>{stats.fps} fps</span>}
         </div>
@@ -143,7 +145,7 @@ export function Stage() {
       {/* Recording badge lives on the stage (top-right) on every breakpoint —
           one element, same position, no per-view divergence. */}
       {recording && (
-        <div className="absolute top-2 right-3 z-30">
+        <div className="absolute top-16 right-3 z-30 md:top-2">
           <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
             <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
             REC {formatDuration(recordingDuration)}
