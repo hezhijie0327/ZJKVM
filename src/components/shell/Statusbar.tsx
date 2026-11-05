@@ -255,7 +255,7 @@ export function Statusbar() {
       {/* Centered copyright line (ZJBlog footer grammar) — the pill floats
           above it, so the two layers can never collide. */}
       <footer className="hidden shrink-0 border-t border-line/80 bg-bg md:block">
-        <div className="flex h-9 items-center justify-center font-mono text-[11px] text-ink-3">
+        <div className="flex h-9 items-center justify-center text-xs text-ink-3">
           <span aria-hidden="true">
             © {new Date().getFullYear()} {siteConfig.copyright}
           </span>

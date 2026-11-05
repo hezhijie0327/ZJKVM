@@ -130,7 +130,7 @@ export default function App() {
 
       {/* Mobile: the ZJBlog-style footer line — the desktop statusbar strip is
           hidden on small screens, so the copyright keeps its centered home. */}
-      <div className="flex h-9 items-center justify-center border-t border-line/80 bg-bg font-mono text-[11px] text-ink-3 md:hidden">
+      <div className="flex h-9 items-center justify-center border-t border-line/80 bg-bg text-xs text-ink-3 md:hidden">
         <span aria-hidden="true">
           © {new Date().getFullYear()} {siteConfig.copyright}
         </span>

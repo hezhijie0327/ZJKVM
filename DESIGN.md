@@ -23,13 +23,36 @@ ZJKVM 是 ZJ 设计家族(参见 zjblog `DESIGN.md`)的第一个 **app 形态**�
 ```
 Navigation   h-14 sticky 毛玻璃,serif 词标 ZJKVM + 金色句点(家族签名,原样)
 Stage        flex-1 满幅,横线纸纹底,视频 object-contain 居中
-  ├─ 统计浮层   左上,mono STATUS_CHIP(分辨率 · fps)
+  ├─ 统计芯片   入画(分辨率/帧率),住在底部芯片胶囊里(Stage 发布 pictureRectAtom)
   ├─ 工具栏     顶部悬浮玻璃胶囊(draggable,fine pointer);移动端 fixed 底部
+  ├─ REC 徽章   画面内容区右上角(letterbox 感知),画面上唯一的常驻叠加
   └─ 无信号态   hollow-text 幽灵水印 "NO SIGNAL" + serif 标题 + 纸片按钮
-Statusbar    h-9 单行 mono footer(家族 META 语言):连接芯片 · LED · 固件 · REC
+Statusbar    底部悬浮层:演示横幅 + 芯片胶囊(连接状态 · LED · 固件 · 统计),
+             md+ 且有画面时停靠画面底边内侧;收起后只剩一枚圆钮
+Footer       居中版权行(家族原样:text-xs text-ink-3),芯片胶囊悬浮其上
 ```
 
-**家族偏差(已登记)**:博客的页脚是居中版权行;KVM 的底部信息带是左信息右元数据的 mono 状态栏 —— 它就是 app 的页脚,版权行仍在其右端。移动端 app 容器加 `pb-20` 让状态栏避开底部工具栏。
+**家族回归(已登记)**:早期 KVM 用「左信息右元数据的 mono 状态栏」充当页脚;现改为与博客同构——居中版权行(text-xs 12px 地板)+ 状态信息上浮为可收起的芯片胶囊,不再占用页脚层。
+
+### 空间与层级 guideline(家族 §6 的 app 版)
+
+- **间距刻度**:Tailwind 默认 4px 基数,不自造刻度。唯一例外是**派生对位**:虚拟键盘小键盘 `mt-[2.625rem]` = 键高 36px(`.kvm-key` 2.25rem)+ 沟 6px,下移一行与主块对齐——数值随键盘几何走,不是第四种刻度;键盘行距改动时同步重算。
+- **版心**:家族 §6 的 `container mx-auto` 在 app 形态让位给**满幅舞台**(注册偏差):导航/舞台/页脚全宽;悬浮层与画面 OSD 用 12px 级贴边距(`left-3` 级),画面内容区内缩 10px。
+- **圆角词汇**:钮/胶囊 `rounded-full`、卡片/抽屉 `rounded-2xl`、小件 `rounded-lg/xl` —— 三档止步,无任意值圆角。
+- **表面层级**:`--bg`(页)→ `--surface`(卡/芯片)→ `--surface-2`(悬停/舞台底)三级止步;舞台底 = `--surface-2` + 横线纸纹(32px 节奏)是登记的表面挪用。
+- **elevation 两档**:`shadow-card`(静态)→ `shadow-pop`(悬浮/弹出),禁止裸写盒阴影。
+- **z-index 阶梯(登记,新叠加层先入座再写样式)**:
+
+  | 值 | 层 | 内容 |
+  | --- | --- | --- |
+  | 20 | 舞台信息 | 无信号态 / HDMI 警告(画面内提示) |
+  | 30 | 画面 OSD + 键盘抽屉 | REC 徽章;虚拟键盘**刻意**压在工具栏树下(工具栏与 popover 保持可用) |
+  | 40 | 悬浮胶囊 | 工具栏树 / 芯片胶囊与演示横幅 / 视频面板 |
+  | 50 | 壳层 | 导航栏 / 连接门抽屉 |
+  | 90 | 弹出层 | 工具栏 popover |
+  | 100 | 模态背板 | `MODAL_SCRIM`(连接门 / 关于) |
+  | 110 | toast | 全局通知 |
+- **触控目标**:基线走家族规则(按钮 `h-10`、图标钮 `size-9`、导航 `h-14`);芯片胶囊内是密集 OSD 语法,`STATUS_CHIP`(h-6)与收起/展开圆钮(size-6/7)按家族 §9 的 24px 注册地板执行,命中余量由胶囊 `py-1.5`、滚动行与相邻间距承担 —— 是对上文的精确化,不是放宽。
 
 ## 3. 片段库:`src/lib/styles.ts`
 
@@ -64,7 +87,7 @@ Statusbar    h-9 单行 mono footer(家族 META 语言):连接芯片 · LED · �
 
 - 工具栏 `role="toolbar"`,每个图标钮必带 `aria-label` + `title`;分段控件 `role="radiogroup"`;开关 `role="switch"` + `aria-checked`
 - LED 芯片 `role="img"` + `aria-label="CAPS on/off"`;REC 计时 `aria-live="polite"`
-- 焦点环 2px accent(家族 base.css 原样);触控目标 ≥ 36px;`pointer:coarse` 下输入控件 16px 防 iOS 缩放
+- 焦点环 2px accent(家族 base.css 原样);触控目标按 §2 guideline(基线 36–40px,芯片层 24px 注册地板);`pointer:coarse` 下输入控件 16px 防 iOS 缩放
 - 跳转链接直达 `#video`;弹层 Esc 可退、外部 pointerdown 关闭
 
 ## 7. 响应式契约
