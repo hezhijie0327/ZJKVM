@@ -79,6 +79,12 @@ export const PANEL_COL = "flex flex-col items-stretch gap-1.5 px-4 py-3";
 /** Segmented control shell: warm track holding pill options */
 export const SEGMENT = "inline-flex items-center gap-0.5 rounded-full bg-surface-2 p-1";
 
+/** In-panel state chip (DevicePanel rows): same height and typography as the
+ *  h-8 row buttons so status and action in one row read as a single scale —
+ *  semantics come from the color/label the caller applies */
+export const PANEL_STATE_CHIP =
+  "inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-line px-3 text-sm font-medium";
+
 /** Segmented option (selected state = accent-strong pill, family tab language);
  *  never wraps — a pill label always stays on one line */
 export const SEGMENT_ITEM =

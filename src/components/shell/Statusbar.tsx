@@ -1,6 +1,6 @@
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { ChevronDown, ChevronUp, Radio } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { siteConfig } from "@/config/site";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { cn } from "@/lib/cn";
@@ -8,21 +8,15 @@ import { useI18n } from "@/lib/i18n";
 import * as storage from "@/lib/storage";
 import { MONO_CHIP, STATUS_CHIP, TOOLBAR } from "@/lib/styles";
 import {
-  connectGateChannelAtom,
-  connectGateOpenAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
-  micGrantedAtom,
   pictureRectAtom,
-  serialStateAtom,
-  statsVisibleAtom,
   usbConnectedAtom,
-  videoStateAtom,
   videoStatsAtom,
   videoStreamAtom,
 } from "@/state/atoms";
-import { checkMic, disconnectSerial, disconnectVideo, grantMic, stopDemoMode } from "@/state/connection";
+import { stopDemoMode } from "@/state/connection";
 import type { LedState } from "@/types";
 
 function LedChip({ label, on, hint }: { label: string; on: boolean; hint: string }) {
@@ -51,39 +45,26 @@ function LedRow({ leds }: { leds: LedState }) {
   );
 }
 
-/** Bottom floating layer: demo banner stacked above the status-chips pill
- *  (the single status surface — video stats included), one grammar on every
- *  breakpoint. From `md` up with a live picture the stack docks inside the
- *  rendered picture's bottom edge (picture rect published by Stage);
+/** Bottom floating layer: demo banner stacked above the status-chips pill.
+ *  The pill is FEEDBACK-ONLY (demo mode, stream stats, HID, lock LEDs,
+ *  firmware) — connect actions live in their owning surfaces (gate,
+ *  VideoPanel / KeyboardPanel / AudioPanel). One grammar on every
+ *  breakpoint; from `md` up with a live picture the stack docks inside the
+ *  rendered picture's bottom edge (picture rect published by Stage),
  *  otherwise it floats above the centered copyright line. Collapsible
  *  (persisted). */
 export function Statusbar() {
   const { t } = useI18n();
-  const videoState = useAtomValue(videoStateAtom);
-  const serialState = useAtomValue(serialStateAtom);
   const demo = useAtomValue(demoModeAtom);
   const leds = useAtomValue(ledsAtom);
   const usb = useAtomValue(usbConnectedAtom);
   const firmware = useAtomValue(firmwareAtom);
-  const micGranted = useAtomValue(micGrantedAtom);
   const stream = useAtomValue(videoStreamAtom);
   const stats = useAtomValue(videoStatsAtom);
-  const statsVisible = useAtomValue(statsVisibleAtom);
   const pictureRect = useAtomValue(pictureRectAtom);
   const isMobile = useIsMobile();
   const inPicture = !isMobile && pictureRect !== null;
-  const setGateOpen = useSetAtom(connectGateOpenAtom);
-  const setGateChannel = useSetAtom(connectGateChannelAtom);
   const [collapsed, setCollapsed] = useState(storage.getChipsCollapsed());
-
-  useEffect(() => {
-    void checkMic();
-  }, []);
-
-  const openGate = (channel: "video" | "serial" | "all") => {
-    setGateChannel(channel);
-    setGateOpen(true);
-  };
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -94,7 +75,7 @@ export function Statusbar() {
 
   const chips = (
     <>
-      {statsVisible && stream && (
+      {stream && (
         <>
           <span className={STATUS_CHIP} title={t("status.statsHint")}>
             {stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}
@@ -115,63 +96,6 @@ export function Statusbar() {
         >
           <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-strong" />
           {t("status.demo")}
-        </button>
-      )}
-      <button
-        type="button"
-        className={cn(
-          STATUS_CHIP,
-          videoState === "connected" && "border-ok/60 text-ok",
-          videoState !== "connected" && "transition-colors hover:border-ink-3 hover:text-ink",
-        )}
-        title={videoState === "connected" ? t("status.disconnectVideo") : t("connect.title")}
-        onClick={() => (videoState === "connected" ? disconnectVideo() : openGate("video"))}
-      >
-        <span
-          aria-hidden="true"
-          className={cn("size-1.5 rounded-full", videoState === "connected" ? "bg-ok" : "bg-line")}
-        />
-        {t("status.video")}
-      </button>
-      <button
-        type="button"
-        className={cn(
-          STATUS_CHIP,
-          serialState === "connected" && "border-ok/60 text-ok",
-          serialState === "disconnected" && "transition-colors hover:border-ink-3 hover:text-ink",
-        )}
-        title={
-          serialState === "connected"
-            ? t("status.disconnectSerial")
-            : serialState === "disconnected"
-              ? t("connect.serial")
-              : t("status.serial")
-        }
-        onClick={() =>
-          serialState === "connected" ? void disconnectSerial() : serialState === "disconnected" && openGate("serial")
-        }
-      >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "size-1.5 rounded-full",
-            serialState === "connected" ? "bg-ok" : serialState === "connecting" ? "bg-warning" : "bg-line",
-          )}
-        />
-        {t("status.serial")}
-      </button>
-      {micGranted !== null && (
-        <button
-          type="button"
-          className={cn(
-            STATUS_CHIP,
-            micGranted ? "border-ok/60 text-ok" : "transition-colors hover:border-ink-3 hover:text-ink",
-          )}
-          title={micGranted ? t("audio.micGranted") : t("audio.micRequest")}
-          onClick={() => !micGranted && void grantMic()}
-        >
-          <span aria-hidden="true" className={cn("size-1.5 rounded-full", micGranted ? "bg-ok" : "bg-line")} />
-          {t("status.mic")}
         </button>
       )}
       {usb !== null && (

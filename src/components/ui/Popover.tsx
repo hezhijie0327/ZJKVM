@@ -62,7 +62,11 @@ export function Popover({
       className={cn(
         CARD,
         "animate-fade-up absolute z-90 w-76 overflow-y-auto overscroll-contain shadow-pop",
-        "max-w-[calc(100vw-1.5rem)]",
+        // anchored below the toolbar (panel top sits ~126px down at any
+        // height): the 15rem reserve = that offset plus the bottom chrome
+        // (expanded chips pill ~98px + copyright 36px + gap) so a panel
+        // never reaches the zone those layers own, at any viewport height.
+        "max-h-[calc(100dvh-15rem)] max-w-[calc(100vw-1.5rem)]",
         sideClass,
         alignClass,
         className,

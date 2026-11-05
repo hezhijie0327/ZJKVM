@@ -6,17 +6,15 @@ import {
   Circle,
   Keyboard as KeyboardIcon,
   Maximize,
-  Monitor,
   MousePointer2,
   PictureInPicture2,
   Square,
-  Volume2,
+  Usb,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { AudioPanel } from "@/components/toolbar/panels/AudioPanel";
+import { DevicePanel } from "@/components/toolbar/panels/DevicePanel";
 import { KeyboardPanel } from "@/components/toolbar/panels/KeyboardPanel";
 import { MousePanel } from "@/components/toolbar/panels/MousePanel";
-import { VideoPanel } from "@/components/toolbar/panels/VideoPanel";
 import { IconButton } from "@/components/ui/IconButton";
 import { Popover } from "@/components/ui/Popover";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -54,8 +52,7 @@ export function Toolbar() {
   const stream = useAtomValue(videoStreamAtom);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const videoButtonRef = useRef<HTMLButtonElement>(null);
-  const audioButtonRef = useRef<HTMLButtonElement>(null);
+  const deviceButtonRef = useRef<HTMLButtonElement>(null);
   const keyboardButtonRef = useRef<HTMLButtonElement>(null);
   const mouseButtonRef = useRef<HTMLButtonElement>(null);
   const recorderRef = useRef(new StreamRecorder());
@@ -192,22 +189,13 @@ export function Toolbar() {
   const buttons = (withAnchors: boolean) => (
     <>
       <IconButton
-        ref={withAnchors ? videoButtonRef : undefined}
-        label={t("tb.video")}
-        active={activePanel === "video"}
-        onClick={() => togglePanel("video")}
+        ref={withAnchors ? deviceButtonRef : undefined}
+        label={t("tb.devices")}
+        active={activePanel === "devices"}
+        onClick={() => togglePanel("devices")}
         className="shrink-0"
       >
-        <Monitor aria-hidden="true" className="size-4" />
-      </IconButton>
-      <IconButton
-        ref={withAnchors ? audioButtonRef : undefined}
-        label={t("tb.audio")}
-        active={activePanel === "audio"}
-        onClick={() => togglePanel("audio")}
-        className="shrink-0"
-      >
-        <Volume2 aria-hidden="true" className="size-4" />
+        <Usb aria-hidden="true" className="size-4" />
       </IconButton>
       <IconButton
         ref={withAnchors ? keyboardButtonRef : undefined}
@@ -265,15 +253,16 @@ export function Toolbar() {
   );
 
   const PANELS: Record<string, ReactNode> = {
-    video: <VideoPanel />,
-    audio: <AudioPanel />,
+    devices: <DevicePanel />,
     keyboard: <KeyboardPanel />,
     mouse: <MousePanel />,
   };
 
   if (collapsed) {
     return (
-      <div className="pointer-events-none fixed inset-x-0 top-2 z-40 flex justify-center px-2">
+      // absolute like the expanded pill (not fixed): a viewport-fixed top-2
+      // would sit under the sticky navigation (z-50) and become unreachable.
+      <div className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center px-2">
         <div className="pointer-events-auto">
           <IconButton label={t("tb.expand")} active onClick={() => setCollapsed(false)} className="shadow-pop">
             <ChevronDown aria-hidden="true" className="size-4" />
@@ -345,20 +334,12 @@ export function Toolbar() {
 
         {/* Panels drop below the pill */}
         <Popover
-          open={activePanel === "video"}
+          open={activePanel === "devices"}
           onClose={() => setActivePanel(null)}
-          anchorRef={videoButtonRef}
+          anchorRef={deviceButtonRef}
           className="w-80"
         >
-          <VideoPanel />
-        </Popover>
-        <Popover
-          open={activePanel === "audio"}
-          onClose={() => setActivePanel(null)}
-          anchorRef={audioButtonRef}
-          className="w-80"
-        >
-          <AudioPanel />
+          <DevicePanel />
         </Popover>
         <Popover
           open={activePanel === "keyboard"}

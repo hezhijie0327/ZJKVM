@@ -35,26 +35,22 @@ export const EN = {
   "browser.secureMissing": "A secure context (HTTPS or localhost) is required for camera and serial access.",
   "browser.mediaMissing": "This browser does not support media device enumeration.",
 
-  // 连接门
+  // 连接与设备面板
   "connect.title": "Connect device",
-  "connect.descVideo": "Select your capture card to open the HDMI preview of the target machine.",
-  "connect.descSerial":
-    "Connect the serial port of your KVM hardware — keyboard and mouse injection ride on this link.",
-  "connect.desc": "Pick the capture card and open the HID serial port. Everything stays local in your browser.",
-  "connect.video": "Capture card",
   "connect.videoAuto": "Auto detect",
   "connect.openVideo": "Open video",
-  "connect.serial": "HID serial port",
-  "connect.serialButton": "Open serial port",
-  "connect.serialHint": "Pick the USB serial device of your KVM dongle (CH9329).",
-  "connect.demo": "Demo mode",
-  "connect.demoHint": "Try the full console without hardware — a virtual capture card plus a visual HID echo.",
-  "connect.connecting": "Connecting…",
   "connect.cameraDenied": "Camera permission was denied. Enable it in the browser site settings, then retry.",
+  "connect.serialButton": "Open serial port",
+  "connect.connecting": "Connecting…",
   "connect.noVideo": "No capture device found.",
   "connect.authHint":
     "List empty? Click “Open video” once to grant camera access — the capture card is then recognized automatically.",
-  "connect.skipVideo": "Skip video",
+
+  // 设备面板(统一管理采集卡 / 串口 / 音频)
+  "tb.devices": "Devices",
+  "device.state": "Link",
+  "device.connected": "Connected",
+  "device.disconnected": "Disconnected",
 
   // 导航与关于
   "nav.theme": "Theme",
@@ -91,8 +87,7 @@ export const EN = {
   "status.expand": "Show status chips",
   "status.chips": "Connection status",
   "status.hidHint": "USB enumeration on the controlled machine — dim means key/mouse injections have no receiver",
-  "status.video": "VIDEO",
-  "status.serial": "SERIAL",
+  "status.serial": "Serial link",
   "status.demo": "DEMO",
   "status.fw": "FW {v}",
   "status.statsHint": "Capture resolution & frame rate",
@@ -103,8 +98,6 @@ export const EN = {
   "stage.openSettings": "Open the toolbar to pick a capture card, or reconnect from the console menu.",
 
   // 工具栏
-  "tb.video": "Video",
-  "tb.audio": "Audio",
   "tb.keyboard": "Keyboard",
   "tb.mouse": "Mouse",
   "tb.record": "Record",
@@ -123,7 +116,6 @@ export const EN = {
   "video.width": "Width",
   "video.height": "Height",
   "video.customExists": "Already exists",
-  "video.stats": "Stats overlay",
 
   // 音频面板
   "audio.volume": "Volume",
@@ -135,7 +127,7 @@ export const EN = {
   "audio.micFail": "Microphone permission denied — check the browser site settings.",
   "toast.micGranted": "Microphone granted — capture-card audio joins on reopen",
   "audio.micGrantedHint": "Mic granted — reopen the video if the capture card audio is still missing.",
-  "audio.micHint": "Mic not granted — click MIC in the status bar below to enable capture-card audio.",
+  "audio.micHint": "Mic not granted — capture-card audio joins once granted and the video reopens.",
   "audio.noAudio": "The current stream carries no audio track.",
 
   // 键盘
@@ -198,7 +190,7 @@ export const EN = {
   "toast.disconnected": "Device disconnected",
   "toast.videoFail": "Could not open the capture card",
   "toast.videoLost": "Video signal lost — reconnecting…",
-  "toast.videoLostGiveUp": "Video signal lost — click the status bar to reconnect",
+  "toast.videoLostGiveUp": "Video signal lost — reopen it from the toolbar",
   "toast.serialFail": "Could not open the serial port",
   "toast.serialReconnected": "Serial reconnected automatically",
   "toast.macSent": "{name} sent",

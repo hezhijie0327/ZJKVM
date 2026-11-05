@@ -17,7 +17,6 @@ const KEYS = {
   wheelDirection: `${PREFIX}wheel-direction`,
   wheelInterval: `${PREFIX}wheel-interval`,
   jiggler: `${PREFIX}mouse-jiggler`,
-  statsVisible: `${PREFIX}stats-visible`,
   toolbarCollapsed: `${PREFIX}toolbar-collapsed`,
   toolbarPos: `${PREFIX}toolbar-pos`,
   keyboardPos: `${PREFIX}keyboard-pos`,
@@ -117,12 +116,6 @@ export const getJiggler = () => get(KEYS.jiggler);
 export const setJiggler = (v: "enable" | "disable") => set(KEYS.jiggler, v);
 
 /* UI */
-export function getStatsVisible(): boolean | null {
-  const raw = get(KEYS.statsVisible);
-  return raw === null ? null : raw === "true";
-}
-export const setStatsVisible = (v: boolean) => set(KEYS.statsVisible, String(v));
-
 export const getToolbarCollapsed = () => get(KEYS.toolbarCollapsed) === "true";
 export const setToolbarCollapsed = (v: boolean) => set(KEYS.toolbarCollapsed, String(v));
 

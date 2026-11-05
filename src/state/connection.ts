@@ -17,7 +17,6 @@ import {
 import { checkPermission, requestPermission } from "@/lib/media/permission";
 import {
   audioByGroupAtom,
-  connectGateOpenAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
@@ -120,7 +119,6 @@ export async function connectVideo(deviceId?: string): Promise<boolean> {
     store.set(videoStreamAtom, camera.getStream());
     store.set(videoStateAtom, "connected");
     store.set(videoDeviceIdAtom, resolved);
-    store.set(connectGateOpenAtom, false);
     return true;
   } catch (error) {
     store.set(videoStateAtom, "disconnected");
@@ -162,7 +160,6 @@ export async function openSerial(): Promise<boolean> {
     serialWanted = true;
     armSerialRebind();
     store.set(serialStateAtom, "connected");
-    store.set(connectGateOpenAtom, false);
     pushToast(t("toast.connected"));
     startLedPolling();
     return true;
@@ -263,7 +260,6 @@ export function startDemo(): void {
   store.set(demoModeAtom, true);
   store.set(videoStreamAtom, demo.stream);
   store.set(videoStateAtom, "connected");
-  store.set(connectGateOpenAtom, false);
   startLedPolling();
 }
 

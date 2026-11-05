@@ -8,8 +8,7 @@ import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { EYEBROW, GHOST_TEXT, META, MONO_CHIP, STATUS_CHIP } from "@/lib/styles";
 import {
-  connectGateChannelAtom,
-  connectGateOpenAtom,
+  activePanelAtom,
   mouseStyleAtom,
   mutedAtom,
   pictureRectAtom,
@@ -39,8 +38,7 @@ export function Stage() {
   const muted = useAtomValue(mutedAtom);
   const setStats = useSetAtom(videoStatsAtom);
   const setPictureRect = useSetAtom(pictureRectAtom);
-  const setGateOpen = useSetAtom(connectGateOpenAtom);
-  const setGateChannel = useSetAtom(connectGateChannelAtom);
+  const setActivePanel = useSetAtom(activePanelAtom);
 
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const stats = useVideoStats(videoEl);
@@ -191,14 +189,7 @@ export function Stage() {
         </div>
       )}
 
-      {!stream && (
-        <NoSignal
-          onConnect={() => {
-            setGateChannel("all");
-            setGateOpen(true);
-          }}
-        />
-      )}
+      {!stream && <NoSignal onConnect={() => setActivePanel("devices")} />}
 
       <Toolbar />
     </main>

@@ -1,6 +1,5 @@
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
-import { ConnectGate } from "@/components/connect/ConnectGate";
 import { MouseInput } from "@/components/input/AbsoluteMouse";
 import { PhysicalKeyboard } from "@/components/input/PhysicalKeyboard";
 import { VirtualKeyboard } from "@/components/keyboard/VirtualKeyboard";
@@ -15,7 +14,7 @@ import * as storage from "@/lib/storage";
 import { watchSystemTheme } from "@/lib/theme";
 import {
   aboutOpenAtom,
-  connectGateOpenAtom,
+  activePanelAtom,
   customResolutionsAtom,
   demoModeAtom,
   jigglerAtom,
@@ -25,7 +24,6 @@ import {
   rotationAtom,
   scaleModeAtom,
   serialStateAtom,
-  statsVisibleAtom,
   toolbarCollapsedAtom,
   toolbarPosAtom,
   videoDeviceIdAtom,
@@ -34,24 +32,25 @@ import {
   wheelDirectionAtom,
   wheelIntervalAtom,
 } from "@/state/atoms";
-import { connectVideo, refreshVideoDevices, watchVideoHotplug } from "@/state/connection";
+import { checkMic, connectVideo, refreshVideoDevices, watchVideoHotplug } from "@/state/connection";
 
 export default function App() {
   const aboutOpen = useAtomValue(aboutOpenAtom);
   const setAboutOpen = useSetAtom(aboutOpenAtom);
 
-  const gateOpen = useAtomValue(connectGateOpenAtom);
-  const setGateOpen = useSetAtom(connectGateOpenAtom);
   const virtualKeyboardOpen = useAtomValue(virtualKeyboardOpenAtom);
   const setVirtualKeyboardOpen = useSetAtom(virtualKeyboardOpenAtom);
 
-  /* Boot: theme watching, device lists + hotplug, connect gate */
+  /* Boot: theme watching, device lists + hotplug, mic permission probe, gate */
   useEffect(() => {
     watchSystemTheme();
     const unwatch = watchVideoHotplug();
+    void checkMic();
     return unwatch;
   }, []);
 
+  /* Cold start: nothing hooked up? open the unified device panel — the
+     connect gate retired once device management moved into the toolbar. */
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const store = getDefaultStore();
@@ -60,11 +59,11 @@ export default function App() {
         store.get(serialStateAtom) === "disconnected" &&
         !store.get(demoModeAtom)
       ) {
-        setGateOpen(true);
+        store.set(activePanelAtom, "devices");
       }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [setGateOpen]);
+  }, []);
 
   /* Jiggler mode follows the atom (also on boot) */
   const jiggler = useAtomValue(jigglerAtom);
@@ -82,7 +81,6 @@ export default function App() {
   const mouseMode = useAtomValue(mouseModeAtom);
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const wheelInterval = useAtomValue(wheelIntervalAtom);
-  const statsVisible = useAtomValue(statsVisibleAtom);
   const toolbarCollapsed = useAtomValue(toolbarCollapsedAtom);
   const toolbarPos = useAtomValue(toolbarPosAtom);
 
@@ -101,7 +99,6 @@ export default function App() {
   useEffect(() => storage.setMouseMode(mouseMode), [mouseMode]);
   useEffect(() => storage.setWheelDirection(wheelDirection), [wheelDirection]);
   useEffect(() => storage.setWheelInterval(wheelInterval), [wheelInterval]);
-  useEffect(() => storage.setStatsVisible(statsVisible), [statsVisible]);
   useEffect(() => storage.setToolbarCollapsed(toolbarCollapsed), [toolbarCollapsed]);
   useEffect(() => storage.setToolbarPos(toolbarPos), [toolbarPos]);
 
@@ -140,7 +137,6 @@ export default function App() {
       <MouseInput />
       {virtualKeyboardOpen && <VirtualKeyboard onClose={() => setVirtualKeyboardOpen(false)} />}
 
-      <ConnectGate open={gateOpen} onClose={() => setGateOpen(false)} />
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <Toasts />
     </div>

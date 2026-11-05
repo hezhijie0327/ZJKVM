@@ -66,9 +66,4 @@ export const recordingDurationAtom = atom(0);
 export const activePanelAtom = atom<string | null>(null);
 export const toolbarCollapsedAtom = atom(storage.getToolbarCollapsed());
 export const toolbarPosAtom = atom(storage.getToolbarPos() ?? { x: 0, y: 0 });
-export const statsVisibleAtom = atom(storage.getStatsVisible() ?? true);
-export const connectGateOpenAtom = atom(false);
-/** Which slice of the connect gate to show: chips open their own slice, the
- *  cold-start button opens everything. */
-export const connectGateChannelAtom = atom<"video" | "serial" | "all">("all");
 export const aboutOpenAtom = atom(false);

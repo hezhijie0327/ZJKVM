@@ -36,22 +36,19 @@ export const ZH: Record<TKey, string> = {
 
   // 连接门
   "connect.title": "连接设备",
-  "connect.descVideo": "选择你的采集卡,打开目标机的 HDMI 视频预览。",
-  "connect.descSerial": "连接 KVM 硬件的串口,键鼠注入经由这条链路送达目标机。",
-  "connect.desc": "选择采集卡并打开 HID 串口,所有数据都只在你本地的浏览器与设备之间流转。",
-  "connect.video": "采集卡",
   "connect.videoAuto": "自动检测",
   "connect.openVideo": "打开视频",
-  "connect.serial": "HID 串口",
-  "connect.serialButton": "打开串口",
-  "connect.serialHint": "选择 KVM 硬件对应的 USB 串口设备(CH9329)。",
-  "connect.demo": "演示模式",
-  "connect.demoHint": "无硬件也能体验完整控制台:虚拟采集卡 + 键鼠注入可视化回显。",
-  "connect.connecting": "连接中…",
   "connect.cameraDenied": "摄像头权限被拒绝,请在浏览器站点设置中开启后重试。",
+  "connect.serialButton": "打开串口",
+  "connect.connecting": "连接中…",
   "connect.noVideo": "未找到采集设备。",
   "connect.authHint": "列表为空时,点击一次「打开视频」授权摄像头,采集卡即可自动识别。",
-  "connect.skipVideo": "暂不用视频",
+
+  // 设备面板(统一管理采集卡 / 串口 / 音频)
+  "tb.devices": "设备",
+  "device.state": "链路",
+  "device.connected": "已连接",
+  "device.disconnected": "未连接",
 
   // 导航与关于
   "nav.theme": "主题",
@@ -88,7 +85,6 @@ export const ZH: Record<TKey, string> = {
   "status.expand": "展开状态芯片",
   "status.chips": "连接状态",
   "status.hidHint": "被控机的 USB 枚举状态,熄灭表示键鼠注入没有接收端",
-  "status.video": "视频",
   "status.serial": "串口",
   "status.demo": "演示",
   "status.fw": "固件 {v}",
@@ -100,8 +96,6 @@ export const ZH: Record<TKey, string> = {
   "stage.openSettings": "打开工具栏选择采集卡,或在控制台菜单中重新连接。",
 
   // 工具栏
-  "tb.video": "视频",
-  "tb.audio": "音频",
   "tb.keyboard": "键盘",
   "tb.mouse": "鼠标",
   "tb.record": "录制",
@@ -120,7 +114,6 @@ export const ZH: Record<TKey, string> = {
   "video.width": "宽",
   "video.height": "高",
   "video.customExists": "已存在",
-  "video.stats": "统计浮层",
 
   // 音频面板
   "audio.volume": "音量",
@@ -132,7 +125,7 @@ export const ZH: Record<TKey, string> = {
   "audio.micFail": "麦克风授权被拒绝——请检查浏览器站点设置。",
   "toast.micGranted": "麦克风已授权,重开后混入采集卡音频",
   "audio.micGrantedHint": "麦克风已授权,若仍无采集卡音频请重开视频。",
-  "audio.micHint": "麦克风未授权——点击底部状态栏的“麦克风”开启采集卡音频。",
+  "audio.micHint": "麦克风未授权——授权后重新打开视频即可混入采集卡音频。",
   "audio.noAudio": "当前视频流没有音轨。",
 
   // 键盘
@@ -195,7 +188,7 @@ export const ZH: Record<TKey, string> = {
   "toast.disconnected": "设备连接已断开",
   "toast.videoFail": "无法打开采集卡",
   "toast.videoLost": "视频信号丢失,正在自动重连…",
-  "toast.videoLostGiveUp": "视频信号丢失——点击状态栏视频可重连",
+  "toast.videoLostGiveUp": "视频信号丢失——请从工具栏重新打开视频",
   "toast.serialFail": "串口打开失败",
   "toast.serialReconnected": "串口已自动重连",
   "toast.macSent": "已发送 {name}",

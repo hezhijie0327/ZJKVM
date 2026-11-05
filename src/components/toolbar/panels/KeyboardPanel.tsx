@@ -94,6 +94,8 @@ export function KeyboardPanel() {
         <Switch checked={enabled} onChange={setEnabled} label={t("kb.enable")} />
       </div>
 
+      {/* The serial link itself is managed in the unified DevicePanel. */}
+
       <div className={PANEL_ROW}>
         <span className={ROW_LABEL}>{t("kb.virtual")}</span>
         <Switch checked={virtualOpen} onChange={toggleVirtual} label={t("kb.virtual")} />
