@@ -161,6 +161,11 @@ export const ZH: Record<TKey, string> = {
   "paste.empty": "没有可输入的内容。",
   "paste.sent": "已输入 {n} 个字符",
   /* demo test card: pressed-key names */
+  "demo.hidLabel": "键鼠报文（8B）",
+  "demo.hidHeld": "按住中",
+  "demo.hidReleased": "已松开",
+  "demo.mouseLabel": "鼠标",
+  "demo.reports": "报文数",
   "demo.keysLabel": "键位",
   "demo.keysNone": "按键 —",
   "demo.mod.lctrl": "左Ctrl",

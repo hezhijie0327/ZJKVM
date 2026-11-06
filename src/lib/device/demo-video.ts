@@ -190,7 +190,7 @@ export function createDemoStream(): DemoStream {
     ctx.fillStyle = "#a8a399";
     ctx.font = "20px ui-monospace, Menlo, monospace";
     const released = state.keys.every((b) => b === 0);
-    ctx.fillText(released ? "LAST HID REPORT (8B) — released" : "LAST HID REPORT (8B) — held", 48, 320);
+    ctx.fillText(`${t("demo.hidLabel")} — ${released ? t("demo.hidReleased") : t("demo.hidHeld")}`, 48, 320);
     ctx.fillStyle = "#eceae4";
     ctx.font = "700 30px ui-monospace, Menlo, monospace";
     const echo = released ? state.keysEcho : state.keys;
@@ -213,7 +213,7 @@ export function createDemoStream(): DemoStream {
     // Mouse echo
     ctx.fillStyle = "#a8a399";
     ctx.font = "20px ui-monospace, Menlo, monospace";
-    ctx.fillText("MOUSE", 48, 470);
+    ctx.fillText(t("demo.mouseLabel"), 48, 470);
     const btnNames = ["L", "R", "M", "B4", "B5"];
     const activeBtns = btnNames.filter((_, i) => (state.buttons >> i) & 1);
     ctx.fillStyle = "#eceae4";
@@ -226,7 +226,7 @@ export function createDemoStream(): DemoStream {
 
     ctx.fillStyle = "#a8a399";
     ctx.font = "20px ui-monospace, Menlo, monospace";
-    ctx.fillText(`reports: ${state.reportCount}`, 48, 560);
+    ctx.fillText(`${t("demo.reports")}: ${state.reportCount}`, 48, 652);
 
     // Cursor crosshair
     const cx = state.mouseX * W;

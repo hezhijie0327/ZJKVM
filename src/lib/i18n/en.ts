@@ -163,6 +163,11 @@ export const EN = {
   "paste.empty": "Nothing to type.",
   "paste.sent": "Typed {n} characters",
   /* demo test card: pressed-key names */
+  "demo.hidLabel": "HID report (8B)",
+  "demo.hidHeld": "held",
+  "demo.hidReleased": "released",
+  "demo.mouseLabel": "Mouse",
+  "demo.reports": "reports",
   "demo.keysLabel": "KEYS",
   "demo.keysNone": "KEYS —",
   "demo.mod.lctrl": "LCtrl",
