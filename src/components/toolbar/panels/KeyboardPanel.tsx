@@ -93,6 +93,7 @@ export function KeyboardPanel() {
         <span className={ROW_LABEL}>{t("kb.enable")}</span>
         <Switch checked={enabled} onChange={setEnabled} label={t("kb.enable")} />
       </div>
+      <p className={cn(META, "px-4 -mt-1 pb-1")}>{t("kb.physicalHint")}</p>
 
       {/* The serial link itself is managed in the unified DevicePanel. */}
 
@@ -100,6 +101,7 @@ export function KeyboardPanel() {
         <span className={ROW_LABEL}>{t("kb.virtual")}</span>
         <Switch checked={virtualOpen} onChange={toggleVirtual} label={t("kb.virtual")} />
       </div>
+      <p className={cn(META, "px-4 -mt-1 pb-1")}>{t("kb.virtualHint")}</p>
 
       {/* Quick keys now live on the virtual keyboard, above the numpad. */}
 

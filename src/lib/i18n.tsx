@@ -26,6 +26,13 @@ function detectLang(): Lang {
   return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 
+/** Live UI language for module-scope consumers (canvas art, exporters) —
+ *  mirrored from the provider so non-React code always reads the truth. */
+let liveLang: Lang = detectLang();
+export function currentLang(): Lang {
+  return liveLang;
+}
+
 interface I18nContextValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
@@ -42,6 +49,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [lang]);
 
   const setLang = useCallback((next: Lang) => {
+    liveLang = next;
     setLangState(next);
     storage.setLanguage(next);
   }, []);

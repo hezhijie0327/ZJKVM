@@ -1,3 +1,7 @@
+import { KeycodeMap } from "@/lib/device/keymap";
+import type { TKey } from "@/lib/i18n/en";
+import { t } from "@/state/t";
+
 /** Demo capture card: a canvas test card rendered at 24 fps and offered as a
  *  synthetic MediaStream, so the entire console works (and is testable)
  *  without hardware. It echoes keyboard reports and mouse position/buttons
@@ -27,6 +31,80 @@ const W = 1280;
 const H = 720;
 
 const BAR_COLORS = ["#c0c0c0", "#c0c000", "#00c0c0", "#00c000", "#c000c0", "#c00000", "#0000c0"];
+
+/* ── Key name decode: usage → localized keycap name ──────────────────────── */
+
+const USAGE_TO_CODE: Record<number, string> = Object.fromEntries(
+  Object.entries(KeycodeMap).map(([code, usage]) => [usage, code]),
+);
+/** Modifier bits (report byte 0, LSB first) → wordbook keys */
+const MOD_KEYS = [
+  "demo.mod.lctrl",
+  "demo.mod.lshift",
+  "demo.mod.lalt",
+  "demo.mod.lmeta",
+  "demo.mod.rctrl",
+  "demo.mod.rshift",
+  "demo.mod.ralt",
+  "demo.mod.rmeta",
+] as const;
+/** Keys whose zh name differs from en — everything else derives from the code */
+const LOCALIZED: Record<string, TKey> = {
+  Enter: "demo.key.enter",
+  Backspace: "demo.key.backspace",
+  Space: "demo.key.space",
+  CapsLock: "demo.key.capslock",
+  Insert: "demo.key.insert",
+  Delete: "demo.key.delete",
+  NumLock: "demo.key.numlock",
+  ScrollLock: "demo.key.scrolllock",
+  PrintScreen: "demo.key.printscreen",
+  NumpadEnter: "demo.key.numpadenter",
+  NumpadAdd: "demo.key.numpadadd",
+  NumpadSubtract: "demo.key.numpadsub",
+  NumpadMultiply: "demo.key.numpadmult",
+  NumpadDivide: "demo.key.numpaddiv",
+  NumpadDecimal: "demo.key.numpaddot",
+};
+/** Glyph-identical names derive straight from the code (KeyQ → Q, F5 → F5) */
+const GLYPHS: Record<string, string> = {
+  Minus: "-",
+  Equal: "=",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Backslash: "\\",
+  Semicolon: ";",
+  Quote: "'",
+  Backquote: "`",
+  Comma: ",",
+  Period: ".",
+  Slash: "/",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  Home: "Home",
+  End: "End",
+  PageUp: "PgUp",
+  PageDown: "PgDn",
+  Tab: "Tab",
+  Escape: "Esc",
+};
+
+function keyName(usage: number): string {
+  const code = USAGE_TO_CODE[usage];
+  if (!code) return `0x${usage.toString(16)}`;
+  const localized = LOCALIZED[code];
+  return localized ? t(localized) : derivedName(code);
+}
+
+function derivedName(code: string): string {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
+  if (/^F([1-9]|1[0-2])$/.test(code)) return code;
+  return GLYPHS[code] ?? code;
+}
 
 export function createDemoStream(): DemoStream {
   const canvas = document.createElement("canvas");
@@ -119,13 +197,18 @@ export function createDemoStream(): DemoStream {
     const hex = echo.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
     ctx.fillText(hex || "00", 48, 360);
 
-    // Modifier decode
+    // Pressed-key decode in the UI language (keycap names via the wordbook)
     const mod = echo[0] ?? 0;
-    const modNames = ["LC", "LS", "LA", "LM", "RC", "RS", "RA", "RM"];
-    const activeMods = modNames.filter((_, i) => (mod >> i) & 1);
+    const names = [
+      ...MOD_KEYS.filter((_, i) => (mod >> i) & 1).map((k) => t(k)),
+      ...echo
+        .slice(1)
+        .filter((b) => b !== 0)
+        .map(keyName),
+    ].join(" + ");
     ctx.fillStyle = "#fec843";
     ctx.font = "24px ui-monospace, Menlo, monospace";
-    ctx.fillText(activeMods.length ? `MOD ${activeMods.join("+")}` : "MOD —", 48, 404);
+    ctx.fillText(names ? `${t("demo.keysLabel")} ${names}` : t("demo.keysNone"), 48, 404);
 
     // Mouse echo
     ctx.fillStyle = "#a8a399";
