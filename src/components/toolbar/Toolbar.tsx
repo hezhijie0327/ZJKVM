@@ -3,13 +3,13 @@ import {
   Camera,
   ChevronDown,
   ChevronUp,
-  Circle,
   Keyboard as KeyboardIcon,
   Maximize,
   MousePointer2,
   PictureInPicture2,
   Square,
   Usb,
+  Video,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { DevicePanel } from "@/components/toolbar/panels/DevicePanel";
@@ -220,14 +220,15 @@ export function Toolbar() {
 
       <IconButton
         label={recording ? t("rec.stop") : t("rec.start")}
-        active={recording}
         onClick={toggleRecording}
         className={cn("shrink-0", recording && "text-danger hover:text-danger")}
       >
         {recording ? (
-          <Square aria-hidden="true" className="size-4" />
+          // live: the stop glyph blinks with the same 1.2 s rhythm as the
+          // picture-badge REC dot
+          <Square aria-hidden="true" className="kvm-rec-dot size-4 fill-current" />
         ) : (
-          <Circle aria-hidden="true" className="size-4" />
+          <Video aria-hidden="true" className="size-4" />
         )}
       </IconButton>
       <IconButton label={t("tb.screenshot")} onClick={snapshot} className="shrink-0">
