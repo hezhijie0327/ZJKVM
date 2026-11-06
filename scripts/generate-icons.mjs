@@ -86,23 +86,24 @@ function hex(color) {
 /** Draw the mark at size×size. Ground: null = transparent (tab icon / PWA
  *  any); "paper" = warm paper #faf9f6 full-bleed — iOS apple-touch icons
  *  must stay opaque or they composite onto black. `inset` shrinks the glyph
- *  into the maskable safe zone. Glyph layout in viewBox-100 terms: keycap
- *  outline (14,14)-(62,62) rx 12 stroke 14, period (85,85) r 7 — identical
- *  to public/favicon.svg. */
+ *  into the maskable safe zone (0.1 = glyph lives in the central 80%).
+ *  Glyph layout in viewBox-100 terms: keycap outline (14,14)-(62,62) rx 12
+ *  stroke 14, period (85,85) r 7 — identical to public/favicon.svg. */
 function drawIcon(size, { ground = null, inset = 0 } = {}) {
   const rgba = Buffer.alloc(size * size * 4);
 
   const paper = hex("#faf9f6"); // family warm paper (light)
   const gold1 = hex("#f5c84c"); // gradient start
   const gold2 = hex("#e09f0a"); // gradient end
-  const s = size / 100; // viewBox-100 scale
+  const ox = size * inset; // glyph origin (safe-zone offset)
+  const s = (size / 100) * (1 - 2 * inset); // viewBox-100 scale inside the zone
 
   const capHalf = 24 * s; // half extent of the keycap square
   const capR = 12 * s; // corner radius
   const strokeHalf = 7 * s; // outline half-width
-  const cx = 38 * s;
-  const cy = 38 * s;
-  const dot = { x: 85 * s, y: 85 * s, r: 7 * s };
+  const cx = ox + 38 * s;
+  const cy = ox + 38 * s;
+  const dot = { x: ox + 85 * s, y: ox + 85 * s, r: 7 * s };
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -139,6 +140,6 @@ function drawIcon(size, { ground = null, inset = 0 } = {}) {
 mkdirSync(OUT, { recursive: true });
 writeFileSync(join(OUT, "icon-192.png"), drawIcon(192));
 writeFileSync(join(OUT, "icon-512.png"), drawIcon(512));
-writeFileSync(join(OUT, "icon-maskable-512.png"), drawIcon(512, { ground: "paper", inset: 10 }));
+writeFileSync(join(OUT, "icon-maskable-512.png"), drawIcon(512, { ground: "paper", inset: 0.1 }));
 writeFileSync(join(HERE, "..", "public", "apple-touch-icon.png"), drawIcon(180, { ground: "paper" }));
 console.log(`icons written to ${OUT}`);
