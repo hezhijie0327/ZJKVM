@@ -12,6 +12,8 @@ import {
   firmwareAtom,
   ledsAtom,
   pictureRectAtom,
+  recordingAtom,
+  recordingDurationAtom,
   usbConnectedAtom,
   videoStatsAtom,
   videoStreamAtom,
@@ -57,6 +59,8 @@ function LedRow({ leds }: { leds: LedState }) {
 export function Statusbar() {
   const { t } = useI18n();
   const demo = useAtomValue(demoModeAtom);
+  const recording = useAtomValue(recordingAtom);
+  const duration = useAtomValue(recordingDurationAtom);
   const leds = useAtomValue(ledsAtom);
   const usb = useAtomValue(usbConnectedAtom);
   const firmware = useAtomValue(firmwareAtom);
@@ -88,6 +92,12 @@ export function Statusbar() {
 
   const chips = (
     <>
+      {recording && (
+        <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
+          <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
+          REC {formatDuration(duration)}
+        </span>
+      )}
       {stream && (
         <>
           <span className={STATUS_CHIP} title={t("status.statsHint")}>
@@ -205,4 +215,10 @@ export function Statusbar() {
       </footer>
     </>
   );
+}
+
+function formatDuration(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }

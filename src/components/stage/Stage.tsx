@@ -6,14 +6,12 @@ import { computeVideoRect } from "@/components/stage/videoRect";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { EYEBROW, GHOST_TEXT, MONO_CHIP, STATUS_CHIP } from "@/lib/styles";
+import { EYEBROW, GHOST_TEXT, MONO_CHIP } from "@/lib/styles";
 import {
   activePanelAtom,
   mouseStyleAtom,
   mutedAtom,
   pictureRectAtom,
-  recordingAtom,
-  recordingDurationAtom,
   rotationAtom,
   scaleModeAtom,
   videoStatsAtom,
@@ -32,8 +30,6 @@ export function Stage() {
   const rotation = useAtomValue(rotationAtom);
   const scale = useAtomValue(scaleModeAtom);
   const mouseStyle = useAtomValue(mouseStyleAtom);
-  const recording = useAtomValue(recordingAtom);
-  const recordingDuration = useAtomValue(recordingDurationAtom);
   const volume = useAtomValue(volumeAtom);
   const muted = useAtomValue(mutedAtom);
   const setStats = useSetAtom(videoStatsAtom);
@@ -177,24 +173,6 @@ export function Stage() {
         className={cn("kvm-stage-video absolute inset-0 size-full object-contain", !stream && "invisible", mouseStyle)}
         style={{ transform: [transform, zoom].filter(Boolean).join(" ") || undefined }}
       />
-
-      {/* Recording badge rides the picture's top-right corner (letterbox-
-          aware) — the only overlay on the picture content itself. */}
-      {recording && (
-        <div
-          className={cn("absolute z-30", pictureRect ? "-translate-x-full" : "top-16 right-3 md:top-2")}
-          style={
-            pictureRect
-              ? { left: pictureRect.offsetX + pictureRect.width - 10, top: pictureRect.offsetY + 10 }
-              : undefined
-          }
-        >
-          <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite">
-            <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
-            REC {formatDuration(recordingDuration)}
-          </span>
-        </div>
-      )}
 
       {stream && signal === "pending" && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
@@ -371,10 +349,4 @@ function WiringDiagram() {
       </text>
     </svg>
   );
-}
-
-function formatDuration(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
