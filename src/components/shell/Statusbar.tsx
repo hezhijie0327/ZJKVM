@@ -15,6 +15,7 @@ import {
   usbConnectedAtom,
   videoStatsAtom,
   videoStreamAtom,
+  virtualKeyboardOpenAtom,
 } from "@/state/atoms";
 import { stopDemoMode } from "@/state/connection";
 import type { LedState } from "@/types";
@@ -62,6 +63,7 @@ export function Statusbar() {
   const stream = useAtomValue(videoStreamAtom);
   const stats = useAtomValue(videoStatsAtom);
   const pictureRect = useAtomValue(pictureRectAtom);
+  const vkOpen = useAtomValue(virtualKeyboardOpenAtom);
   const isMobile = useIsMobile();
   const inPicture = !isMobile && pictureRect !== null;
   const [collapsed, setCollapsed] = useState(storage.getChipsCollapsed());
@@ -117,64 +119,69 @@ export function Statusbar() {
   return (
     <>
       {/* Floating bottom stack — demo banner above the chips pill so neither
-          layer can occlude the other. */}
-      <div
-        className={cn(
-          "pointer-events-none fixed z-40 flex flex-col items-center gap-2",
-          !inPicture && "inset-x-0 bottom-11",
-        )}
-        style={
-          inPicture && pictureRect
-            ? {
-                left: pictureRect.x,
-                width: pictureRect.w,
-                bottom: window.innerHeight - pictureRect.y - pictureRect.h + 10,
-              }
-            : undefined
-        }
-      >
-        {demo && (
-          <p className="pointer-events-none max-w-[min(28rem,100%)]">
-            <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
-              <Radio aria-hidden="true" className="size-3" />
-              {t("demo.banner")}
-            </span>
-          </p>
-        )}
-        {collapsed ? (
-          <button
-            type="button"
-            aria-expanded={false}
-            aria-label={t("status.expand")}
-            title={t("status.expand")}
-            onClick={toggleCollapsed}
-            className="pointer-events-auto grid size-9 place-items-center rounded-full border border-line/80 bg-bg/85 text-ink-2 shadow-pop backdrop-blur-md transition-colors hover:text-ink"
-          >
-            <ChevronUp aria-hidden="true" className="size-4" />
-          </button>
-        ) : (
-          <div
-            className={cn(TOOLBAR, "pointer-events-auto max-w-[min(100%,calc(100vw-2rem))]")}
-            role="status"
-            aria-label={t("status.chips")}
-          >
-            <div className="flex items-center gap-1.5 overflow-x-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {chips}
-            </div>
-            <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-line" />
+          layer can occlude the other. It yields entirely while the virtual
+          keyboard is open: both dock at the viewport bottom, and this stack
+          (z-40) would otherwise paint its collapsed toggle on top of the
+          keycaps (sheet z-30) and swallow their taps. */}
+      {!vkOpen && (
+        <div
+          className={cn(
+            "pointer-events-none fixed z-40 flex flex-col items-center gap-2",
+            !inPicture && "inset-x-0 bottom-11",
+          )}
+          style={
+            inPicture && pictureRect
+              ? {
+                  left: pictureRect.x,
+                  width: pictureRect.w,
+                  bottom: window.innerHeight - pictureRect.y - pictureRect.h + 10,
+                }
+              : undefined
+          }
+        >
+          {demo && (
+            <p className="pointer-events-none max-w-[min(28rem,100%)]">
+              <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
+                <Radio aria-hidden="true" className="size-3" />
+                {t("demo.banner")}
+              </span>
+            </p>
+          )}
+          {collapsed ? (
             <button
               type="button"
-              aria-expanded
-              aria-label={t("status.collapse")}
-              title={t("status.collapse")}
+              aria-expanded={false}
+              aria-label={t("status.expand")}
+              title={t("status.expand")}
               onClick={toggleCollapsed}
-              className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:text-ink"
+              className="pointer-events-auto grid size-9 place-items-center rounded-full border border-line/80 bg-bg/85 text-ink-2 shadow-pop backdrop-blur-md transition-colors hover:text-ink"
             >
-              <ChevronDown aria-hidden="true" className="size-4" />
+              <ChevronUp aria-hidden="true" className="size-4" />
             </button>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div
+              className={cn(TOOLBAR, "pointer-events-auto max-w-[min(100%,calc(100vw-2rem))]")}
+              role="status"
+              aria-label={t("status.chips")}
+            >
+              <div className="flex items-center gap-1.5 overflow-x-auto px-2 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {chips}
+              </div>
+              <span aria-hidden="true" className="mx-0.5 h-5 w-px shrink-0 bg-line" />
+              <button
+                type="button"
+                aria-expanded
+                aria-label={t("status.collapse")}
+                title={t("status.collapse")}
+                onClick={toggleCollapsed}
+                className="grid size-8 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:text-ink"
+              >
+                <ChevronDown aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Centered copyright line (ZJBlog footer grammar) — the pill floats
           above it, so the two layers can never collide. */}
