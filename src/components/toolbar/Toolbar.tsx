@@ -67,9 +67,8 @@ export function Toolbar() {
     [activePanel, setActivePanel],
   );
 
-  /* ── Drag (fine pointers only) ── */
+  /* ── Drag (any pointer: mouse drag, touch drag via touch-none) ── */
   const onHandlePointerDown = (event: React.PointerEvent) => {
-    if (event.pointerType !== "mouse") return;
     event.preventDefault();
     setDragging(true);
     const startX = event.clientX;
@@ -245,11 +244,9 @@ export function Toolbar() {
       <IconButton label={t("tb.fullscreen")} onClick={toggleFullscreen} className="shrink-0">
         <Maximize aria-hidden="true" className="size-4" />
       </IconButton>
-      {!isMobile && (
-        <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)} className="shrink-0">
-          <ChevronUp aria-hidden="true" className="size-4" />
-        </IconButton>
-      )}
+      <IconButton label={t("tb.collapse")} onClick={() => setCollapsed(true)} className="shrink-0">
+        <ChevronUp aria-hidden="true" className="size-4" />
+      </IconButton>
     </>
   );
 
@@ -276,16 +273,32 @@ export function Toolbar() {
   if (isMobile) {
     return (
       <>
-        {/* Floating pill dock at the top of the stage — same grammar as
-            desktop. absolute (not fixed): it anchors to the stage below the
-            page header; a viewport-fixed top would hide under the header. */}
+        {/* Floating pill dock at the top of the stage — same grammar, free
+            drag and collapse as desktop. absolute (not fixed): it anchors to
+            the stage below the page header; a viewport-fixed top would hide
+            under the header. */}
         <div
           role="toolbar"
           aria-label="KVM"
           aria-orientation="horizontal"
           className="pointer-events-none absolute inset-x-0 top-2 z-40 flex justify-center px-2"
+          style={{ transform: `translateY(${pos.y}px)` }}
         >
-          <div className="pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line/80 bg-bg/85 p-1 shadow-pop backdrop-blur-md [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          <div
+            className={cn(
+              "pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line/80 bg-bg/85 p-1 shadow-pop backdrop-blur-md select-none [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
+              dragging && "cursor-grabbing",
+            )}
+            style={{ transform: `translateX(${pos.x}px)` }}
+          >
+            <button
+              type="button"
+              aria-label="drag"
+              onPointerDown={onHandlePointerDown}
+              className="grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-full text-ink-3 active:text-ink"
+            >
+              <GripDots />
+            </button>
             {buttons(false)}
           </div>
         </div>
@@ -324,7 +337,7 @@ export function Toolbar() {
           aria-label="drag"
           onPointerDown={onHandlePointerDown}
           className={cn(
-            "grid size-8 cursor-grab place-items-center rounded-full text-ink-3 hover:text-ink",
+            "grid size-8 cursor-grab touch-none place-items-center rounded-full text-ink-3 hover:text-ink",
             dragging && "cursor-grabbing",
           )}
         >
