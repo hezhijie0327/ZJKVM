@@ -294,6 +294,7 @@ export function startDemo(): void {
   store.set(videoStreamAtom, demo.stream);
   store.set(videoStateAtom, "connected");
   startLedPolling();
+  pushToast(t("demo.banner"));
 }
 
 function stopDemo(): void {

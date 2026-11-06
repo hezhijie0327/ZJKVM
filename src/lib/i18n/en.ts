@@ -83,6 +83,7 @@ export const EN = {
   "status.disconnectVideo": "Disconnect video",
   "status.disconnectSerial": "Disconnect serial",
   "status.demoStop": "Stop demo mode",
+  "status.info": "Status",
   "status.collapse": "Hide status chips",
   "status.expand": "Show status chips",
   "status.chips": "Connection status",

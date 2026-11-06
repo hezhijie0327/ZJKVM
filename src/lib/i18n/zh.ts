@@ -81,6 +81,7 @@ export const ZH: Record<TKey, string> = {
   "status.disconnectVideo": "断开视频",
   "status.disconnectSerial": "断开串口",
   "status.demoStop": "停止演示",
+  "status.info": "状态信息",
   "status.collapse": "收起状态芯片",
   "status.expand": "展开状态芯片",
   "status.chips": "连接状态",

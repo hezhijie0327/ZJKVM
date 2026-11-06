@@ -20,7 +20,6 @@ const KEYS = {
   toolbarCollapsed: `${PREFIX}toolbar-collapsed`,
   toolbarPos: `${PREFIX}toolbar-pos`,
   keyboardPos: `${PREFIX}keyboard-pos`,
-  chipsCollapsed: `${PREFIX}chips-collapsed`,
 } as const;
 
 function get(key: string): string | null {
@@ -124,8 +123,6 @@ export const setToolbarPos = (v: { x: number; y: number }) => set(KEYS.toolbarPo
 
 /** Statusbar chips pill collapsed — folded by default; only an explicit
  *  expand (stored "false") keeps it open. */
-export const getChipsCollapsed = () => get(KEYS.chipsCollapsed) !== "false";
-export const setChipsCollapsed = (v: boolean) => set(KEYS.chipsCollapsed, String(v));
 
 export const getKeyboardPos = () => getJSON<{ x: number; y: number }>(KEYS.keyboardPos);
 export const setKeyboardPos = (v: { x: number; y: number }) => set(KEYS.keyboardPos, JSON.stringify(v));
