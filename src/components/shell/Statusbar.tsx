@@ -204,9 +204,10 @@ export function Statusbar() {
         </div>
       )}
 
-      {/* Centered copyright line (ZJBlog footer grammar) — the pill floats
-          above it, so the two layers can never collide. */}
-      <footer className="hidden shrink-0 border-t border-line/80 bg-bg md:block">
+      {/* Centered copyright line (ZJBlog footer grammar). Ground = the
+          stage's own surface-2 so the footer reads as the stage continuing,
+          not a different band (bg-bg fought the stage's lighter paper). */}
+      <footer className="hidden shrink-0 border-t border-line/80 bg-surface-2 md:block">
         <div className="flex h-9 items-center justify-center text-xs text-ink-3">
           <span aria-hidden="true">
             © {new Date().getFullYear()} {siteConfig.copyright}
