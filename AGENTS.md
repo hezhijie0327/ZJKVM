@@ -43,3 +43,7 @@ Package manager is pnpm. `pnpm-workspace.yaml` whitelists esbuild's build script
 - Web Serial / keyboard.lock / showSaveFilePicker are Chromium-desktop-only — always gate via `lib/browser.ts` capability checks, never assume.
 - `index.html` ships an inline theme bootstrap script (anti-FOUC); keep it in sync with `lib/theme.ts` if the storage key changes.
 - Lighthouse SEO requires `public/robots.txt`, `llms.txt`, `.well-known/ard.json` (audit falls back to index.html otherwise and fails) — keep them when changing the build.
+
+## Git commit convention
+
+Every commit subject starts with a type prefix — `feat` / `fix` / `chore` / `docs` / `refactor` / `perf` / `test` / `build` — optionally scoped: `fix(toolbar): ...`. Subject: imperative, lowercase start, no trailing period, aim ≤ 72 chars; detail goes in the body after a blank line (why, not what); breaking changes take `!` before the colon or a `BREAKING CHANGE:` body footer. Applies to our own commits only — upstream searxng commits keep the upstream `[fix] ...` format. Never rewrite pushed history.
