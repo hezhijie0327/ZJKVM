@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { ChevronDown, ChevronUp, Radio } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { siteConfig } from "@/config/site";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { cn } from "@/lib/cn";
@@ -67,6 +67,17 @@ export function Statusbar() {
   const isMobile = useIsMobile();
   const inPicture = !isMobile && pictureRect !== null;
   const [collapsed, setCollapsed] = useState(storage.getChipsCollapsed());
+
+  /* The demo explainer is a first-sighting hint, not a status: it shows for
+     a few seconds after demo mode starts, then fades — the accent 演示 chip
+     in the pill stays as the persistent (and stop) affordance. */
+  const [bannerShown, setBannerShown] = useState(false);
+  useEffect(() => {
+    if (!demo) return;
+    setBannerShown(true);
+    const timer = window.setTimeout(() => setBannerShown(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, [demo]);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -139,9 +150,9 @@ export function Statusbar() {
               : undefined
           }
         >
-          {demo && (
-            <p className="pointer-events-none max-w-[min(28rem,100%)]">
-              <span className={cn(MONO_CHIP, "border-accent/60 bg-accent-soft/60 text-accent")}>
+          {demo && bannerShown && (
+            <p className="kvm-demo-banner pointer-events-none max-w-[min(28rem,100%)]">
+              <span className={cn(MONO_CHIP, "border-line/80 bg-bg/85 text-ink-2 backdrop-blur-md")}>
                 <Radio aria-hidden="true" className="size-3" />
                 {t("demo.banner")}
               </span>

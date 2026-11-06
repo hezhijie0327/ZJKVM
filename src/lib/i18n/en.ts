@@ -94,8 +94,16 @@ export const EN = {
 
   // 舞台
   "stage.noSignal": "Waiting for video",
-  "stage.noHdmi": "NO HDMI SIGNAL — connect the target machine's video output to the dongle",
-  "stage.openSettings": "Open the toolbar to pick a capture card, or reconnect from the console menu.",
+  "stage.waiting": "Waiting for the video signal…",
+  "stage.noHdmi": "No HDMI signal",
+  "stage.wiring.title": "Wiring guide",
+  "stage.wiring.target": "Target",
+  "stage.wiring.host": "Host · browser",
+  "stage.wiring.monitor": "Monitor (optional)",
+  "stage.wiring.hid": "USB HID",
+  "stage.wiring.usb": "USB · video / HID",
+  "stage.wiring.usbSwitch": "USB-A port · the switch maps it to target / host",
+  "stage.wiring.loop": "HDMI loop out",
 
   // 工具栏
   "tb.keyboard": "Keyboard",

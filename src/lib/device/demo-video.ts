@@ -161,12 +161,6 @@ export function createDemoStream(): DemoStream {
     ctx.lineTo(cx, cy + 30);
     ctx.stroke();
 
-    // Footer
-    ctx.fillStyle = "#716c61";
-    ctx.font = "18px ui-sans-serif, system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("ZJ design language · warm paper / ink / amber gold", W / 2, H - 40);
-
     raf = requestAnimationFrame(draw);
   }
 

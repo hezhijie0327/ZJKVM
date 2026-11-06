@@ -209,6 +209,18 @@ input[type="range"].kvm-range::-moz-range-thumb {
   color: var(--accent);
 }
 
+/* ── Demo banner: first-sighting hint that fades itself out ── */
+
+@keyframes kvm-fadeout {
+  to {
+    opacity: 0;
+  }
+}
+
+.kvm-demo-banner {
+  animation: kvm-fadeout 0.6s ease 5.4s forwards;
+}
+
 /* ── Recording pulse ── */
 
 @keyframes kvm-pulse {

@@ -37,8 +37,18 @@ let demoDevice: DemoDevice | null = null;
 let serialDevice: SerialDevice | null = null;
 let ledTimer: number | null = null;
 let unwatchDevices: (() => void) | null = null;
+/** Track-loss auto-retry holds off until this timestamp — an intentional
+ *  demo stop ends the demo track synchronously, and the stage's re-acquire
+ *  would otherwise race in and silently light up whatever default camera
+ *  the environment resolves to. */
+let videoRetrySuppressedUntil = 0;
 
 const store = getDefaultStore();
+
+/** True while the stage should not auto-re-acquire a lost video track. */
+export function videoRetrySuppressed(): boolean {
+  return Date.now() < videoRetrySuppressedUntil;
+}
 
 export async function refreshVideoDevices(): Promise<void> {
   try {
@@ -250,9 +260,12 @@ async function rebindSerial(port: SerialPort | null): Promise<void> {
   }
 }
 
-/** Demo mode: synthetic capture card + virtual HID device. */
+/** Demo mode: synthetic capture card + virtual HID device. Takes over the
+ *  stage: the real camera is released — the demo is the show, its light
+ *  should go off, and stopDemoMode then finds no stale stream to keep. */
 export function startDemo(): void {
   stopDemo();
+  camera.close();
   demo = createDemoStream();
   attachDebugHook(demo);
   demoDevice = new DemoDevice(demo.state);
@@ -300,8 +313,16 @@ export async function disconnectSerial(): Promise<void> {
  *  real hardware is still feeding it. */
 export function stopDemoMode(): void {
   if (!demo) return;
+  // Stopping the demo ends its track, which the stage's loss-retry treats
+  // like a capture-card drop — arm the suppression BEFORE stopping so the
+  // retry never races in and re-opens a default camera behind the scenes.
+  videoRetrySuppressedUntil = Date.now() + 2500;
   stopDemo();
-  if (!camera.stream) {
+  if (camera.stream) {
+    // A real capture card was opened while demo ran — hand the stage back
+    // to it with a fresh stream instead of leaving the dead demo one.
+    void connectVideo(store.get(videoDeviceIdAtom) || undefined);
+  } else {
     store.set(videoStreamAtom, null);
     store.set(videoStateAtom, "disconnected");
   }

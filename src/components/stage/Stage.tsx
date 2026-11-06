@@ -1,12 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { Radio } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useVideoStats } from "@/components/stage/useVideoStats";
 import { computeVideoRect } from "@/components/stage/videoRect";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { EYEBROW, GHOST_TEXT, META, MONO_CHIP, STATUS_CHIP } from "@/lib/styles";
+import { EYEBROW, GHOST_TEXT, MONO_CHIP, STATUS_CHIP } from "@/lib/styles";
 import {
   activePanelAtom,
   mouseStyleAtom,
@@ -20,7 +20,7 @@ import {
   videoStreamAtom,
   volumeAtom,
 } from "@/state/atoms";
-import { connectVideo } from "@/state/connection";
+import { connectVideo, videoRetrySuppressed } from "@/state/connection";
 import { pushToast } from "@/state/toast";
 
 /** The KVM stage: full-bleed ruled-paper surface, capture stream letterboxed
@@ -65,6 +65,10 @@ export function Stage() {
     let retryTimer: number | null = null;
     let attempts = 0;
     const onGone = () => {
+      // An intentional demo stop ends its track too — that is teardown, not
+      // a capture-card drop, so the auto-retry must stand down and leave the
+      // stage to return to the no-signal state.
+      if (videoRetrySuppressed()) return;
       attempts += 1;
       if (attempts > 2) {
         pushToast(t("toast.videoLostGiveUp"), "danger");
@@ -93,23 +97,35 @@ export function Stage() {
     videoEl.muted = muted;
   }, [videoEl, volume, muted]);
 
-  /* Stream healthy but zero frames = no HDMI signal on the capture card's
-     input (MS2133 keeps the track live and silent). Say so after 3 s. */
-  const [hdmiSilent, setHdmiSilent] = useState(false);
+  /* Stream liveness, three states so the stage never sits blank: a connected
+     source resolves dimensions within a few hundred ms (the element's own
+     loadedmetadata/resize events flip us to "live" early), a dongle with no
+     HDMI input keeps the track live-but-silent and escalates to the wiring
+     guide after a 3 s grace, and in between a waiting chip gives instant
+     feedback. A stream identity change (device switch, demo start) resets
+     the verdict first — otherwise the previous source's "silent" sticks and
+     the guide flashes over a live picture. */
+  const [signal, setSignal] = useState<"pending" | "live" | "silent">("pending");
   useEffect(() => {
-    if (!stream) {
-      setHdmiSilent(false);
-      return;
-    }
-    const timer = window.setInterval(() => {
+    setSignal("pending");
+    if (!stream) return;
+    const judge = () => {
       const live = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
-      setHdmiSilent(!live);
-    }, 3000);
-    const timer2 = window.setTimeout(() => {
-      const live = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
-      setHdmiSilent(!live);
-    }, 3000);
+      setSignal(live ? "live" : "silent");
+    };
+    // Early live verdict only: metadata with real dimensions means frames
+    // are coming — an input-less dongle never resolves dimensions, so we
+    // never call "silent" off an event; the grace timeout owns that call.
+    const onMeta = () => {
+      if (videoEl && videoEl.videoWidth > 0) setSignal("live");
+    };
+    videoEl?.addEventListener("loadedmetadata", onMeta);
+    videoEl?.addEventListener("resize", onMeta);
+    const timer = window.setInterval(judge, 3000);
+    const timer2 = window.setTimeout(judge, 3000);
     return () => {
+      videoEl?.removeEventListener("loadedmetadata", onMeta);
+      videoEl?.removeEventListener("resize", onMeta);
       window.clearInterval(timer);
       window.clearTimeout(timer2);
     };
@@ -180,12 +196,23 @@ export function Stage() {
         </div>
       )}
 
-      {stream && hdmiSilent && (
+      {stream && signal === "pending" && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-          <span className={cn(MONO_CHIP, "border-warning/60 bg-warning/10 px-3 py-1 text-warning")}>
-            <Radio aria-hidden="true" className="size-3" />
-            {t("stage.noHdmi")}
+          <span className={cn(MONO_CHIP, "border-line/80 bg-bg/85 px-3 py-1 text-ink-2 backdrop-blur-md")}>
+            <LoaderCircle aria-hidden="true" className="size-3 animate-spin" />
+            {t("stage.waiting")}
           </span>
+        </div>
+      )}
+
+      {stream && signal === "silent" && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-x-clip">
+          <div className="relative flex w-full max-w-2xl flex-col items-center gap-2 px-6 text-center">
+            <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              {t("stage.noHdmi")}
+            </h2>
+            <WiringDiagram />
+          </div>
         </div>
       )}
 
@@ -206,10 +233,10 @@ function NoSignal({ onConnect }: { onConnect: () => void }) {
       >
         NO&nbsp;SIGNAL
       </span>
-      <div className="relative flex flex-col items-center gap-2 px-6 text-center">
+      <div className="relative flex w-full max-w-2xl flex-col items-center gap-2 px-6 text-center">
         <p className={EYEBROW}>ZJKVM</p>
         <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{t("stage.noSignal")}</h2>
-        <p className={cn(META, "max-w-sm")}>{t("stage.openSettings")}</p>
+        <WiringDiagram />
         <button
           type="button"
           onClick={onConnect}
@@ -219,6 +246,130 @@ function NoSignal({ onConnect }: { onConnect: () => void }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/** Redrawn wiring map (from Sipeed's NanoKVM-USB diagram, family tokens):
+ *  the target's HDMI out feeds the dongle, the dongle injects USB HID back
+ *  into the target, its HOST port carries video/audio/HID to the computer
+ *  running this console, and an optional HDMI loop-out reaches a monitor.
+ *  Shown whenever the stage sits dark so the fix is one glance away. */
+function WiringDiagram() {
+  const { t } = useI18n();
+  return (
+    <svg
+      viewBox="0 0 620 204"
+      role="img"
+      aria-label={t("stage.wiring.title")}
+      className="mt-1 w-full max-w-2xl"
+      style={{ fontFamily: "var(--font-mono)" }}
+    >
+      <defs>
+        <marker
+          id="wiring-arrow"
+          viewBox="0 0 8 8"
+          refX="7"
+          refY="4"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto-start-reverse"
+        >
+          <path d="M0 0L8 4L0 8Z" fill="var(--ink-3)" />
+        </marker>
+      </defs>
+
+      {/* target tower */}
+      <rect x="18" y="48" width="104" height="96" rx="10" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <rect x="36" y="66" width="68" height="9" rx="2" fill="var(--ink-3)" />
+      <rect x="36" y="84" width="68" height="9" rx="2" fill="var(--ink-3)" />
+      <rect x="36" y="102" width="68" height="9" rx="2" fill="var(--ink-3)" />
+      <text x="70" y="166" textAnchor="middle" fontSize="12" fontWeight="500" fill="var(--ink)">
+        {t("stage.wiring.target")}
+      </text>
+
+      {/* NanoKVM USB dongle (accent border = the hub everything meets at);
+          inside, the USB-A port's T/H switch glyph — the physical toggle
+          maps that port to the target or to this computer. */}
+      <rect x="258" y="76" width="128" height="64" rx="12" fill="var(--surface-2)" stroke="var(--accent)" />
+      <text x="322" y="97" textAnchor="middle" fontSize="12" fill="var(--ink)">
+        NanoKVM USB
+      </text>
+      <text x="300" y="121" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
+        T
+      </text>
+      <rect x="310" y="112" width="24" height="11" rx="5.5" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <circle cx="316" cy="117.5" r="3.5" fill="var(--ink-3)" />
+      <text x="344" y="121" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
+        H
+      </text>
+      <text x="322" y="158" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+        {t("stage.wiring.usbSwitch")}
+      </text>
+
+      {/* monitor (optional loop-out) */}
+      <rect x="498" y="20" width="104" height="58" rx="6" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <rect x="540" y="78" width="20" height="6" rx="2" fill="var(--ink-3)" />
+      <rect x="526" y="86" width="48" height="5" rx="2" fill="var(--ink-3)" />
+      <text x="550" y="106" textAnchor="middle" fontSize="11" fill="var(--ink)">
+        {t("stage.wiring.monitor")}
+      </text>
+
+      {/* host laptop */}
+      <rect x="512" y="122" width="76" height="44" rx="5" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <rect x="502" y="166" width="96" height="7" rx="3" fill="var(--ink-3)" />
+      <text x="550" y="192" textAnchor="middle" fontSize="11" fill="var(--ink)">
+        {t("stage.wiring.host")}
+      </text>
+
+      {/* HDMI: target out → dongle in */}
+      <line x1="122" y1="84" x2="254" y2="84" stroke="var(--ink-3)" strokeWidth="1.5" markerEnd="url(#wiring-arrow)" />
+      <text x="190" y="74" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+        HDMI
+      </text>
+
+      {/* HID: dongle → target (keyboard/mouse injection) */}
+      <line
+        x1="258"
+        y1="114"
+        x2="126"
+        y2="114"
+        stroke="var(--ink-3)"
+        strokeWidth="1.5"
+        markerEnd="url(#wiring-arrow)"
+      />
+      <text x="190" y="134" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+        {t("stage.wiring.hid")}
+      </text>
+
+      {/* optional HDMI loop-out */}
+      <line
+        x1="386"
+        y1="84"
+        x2="492"
+        y2="46"
+        stroke="var(--ink-3)"
+        strokeWidth="1.5"
+        strokeDasharray="4 3"
+        markerEnd="url(#wiring-arrow)"
+      />
+      <text x="440" y="54" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+        {t("stage.wiring.loop")}
+      </text>
+
+      {/* USB: dongle → host computer */}
+      <line
+        x1="386"
+        y1="112"
+        x2="506"
+        y2="140"
+        stroke="var(--ink-3)"
+        strokeWidth="1.5"
+        markerEnd="url(#wiring-arrow)"
+      />
+      <text x="448" y="116" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+        {t("stage.wiring.usb")}
+      </text>
+    </svg>
   );
 }
 

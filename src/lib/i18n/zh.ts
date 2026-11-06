@@ -92,8 +92,16 @@ export const ZH: Record<TKey, string> = {
 
   // 舞台
   "stage.noSignal": "等待视频信号",
-  "stage.noHdmi": "HDMI 无信号——请将被控机的视频输出接入采集卡",
-  "stage.openSettings": "打开工具栏选择采集卡,或在控制台菜单中重新连接。",
+  "stage.waiting": "正在等待视频信号…",
+  "stage.noHdmi": "HDMI 无信号",
+  "stage.wiring.title": "接线指南",
+  "stage.wiring.target": "被控机",
+  "stage.wiring.host": "本机 · 浏览器",
+  "stage.wiring.monitor": "显示器(可选)",
+  "stage.wiring.hid": "USB 键鼠",
+  "stage.wiring.usb": "USB · 画面 / 键鼠",
+  "stage.wiring.usbSwitch": "USB-A 口 · 开关切换到被控机 / 本机",
+  "stage.wiring.loop": "HDMI 环出",
 
   // 工具栏
   "tb.keyboard": "键盘",

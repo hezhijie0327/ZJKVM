@@ -65,10 +65,13 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  /* Jiggler mode follows the atom (also on boot) */
+  /* Jiggler mode follows the atom (also on boot) and persists with the
+     other preferences — the panel's atom setter shadows storage.setJiggler,
+     so the write must happen here. */
   const jiggler = useAtomValue(jigglerAtom);
   useEffect(() => {
     mouseJiggler.setMode(jiggler);
+    storage.setJiggler(jiggler);
   }, [jiggler]);
 
   /* Preference persistence — one write per changed slice */
