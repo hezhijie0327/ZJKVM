@@ -2,8 +2,9 @@
 
 /**
  * ZJKVM icon generator — zero-dependency PNG writer.
- * Family mark: warm dark paper square, three ruled paper lines, and the
- * amber-gold period (the family wordmark signature). Produces:
+ * Family mark: an amber-gold keycap (KVM starts with the keyboard) with the
+ * family period as its legend, on the warm dark paper square — the same
+ * single-glyph grammar as the ZJBlog mark. Produces:
  *   public/icons/icon-192.png
  *   public/icons/icon-512.png
  *   public/icons/icon-maskable-512.png  (full-bleed, 80% safe zone)
@@ -81,57 +82,53 @@ function hex(color) {
   return [parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16)];
 }
 
-/** Draw at size×size; `inset` shrinks the artwork into the maskable safe zone. */
+/** Draw at size×size; `inset` shrinks the artwork into the maskable safe zone.
+ *  Full-bleed warm paper (the family light ground, same as ZJSearch's tile) —
+ *  iOS apple-touch icons must stay opaque or they composite onto black. */
 function drawIcon(size, { inset = 0 } = {}) {
   const rgba = Buffer.alloc(size * size * 4);
 
-  const bg = hex("#1b1a18"); // family dark paper
-  const paper = hex("#eceae4"); // ink-on-dark text color
-  const gold = hex("#fec843"); // accent-strong period
-  const radius = size * 0.18;
+  const paper = hex("#faf9f6"); // family warm paper (light)
+  const gold1 = hex("#f5c84c"); // gradient start (matches favicon.svg)
+  const gold2 = hex("#e09f0a"); // gradient end
 
   const left = size * inset;
-  const right = size * (1 - inset);
   const top = size * inset;
-  const bottom = size * (1 - inset);
-  const art = right - left;
+  const art = size * (1 - 2 * inset);
 
-  const lineH = art * 0.045;
-  const lines = [0.3, 0.44, 0.58].map((f) => top + art * f);
-  const lineStart = left + art * 0.18;
-  const lineEnd = left + art * 0.74;
+  // Keycap: centered rounded-rect outline + the golden period as its legend.
+  // Same proportions as public/favicon.svg (17/66/15, stroke 9, dot 8 @100).
+  const capHalf = art * 0.33; // half extent of the keycap square
+  const capR = art * 0.15; // corner radius
+  const strokeHalf = art * 0.045; // outline half-width
+  const cx = left + art / 2;
+  const cy = top + art / 2;
+  const dotR = art * 0.08;
 
-  const dotR = art * 0.13;
-  const dotX = left + art * 0.66;
-  const dotY = top + art * 0.66;
+  const lerp = (a, b, t) => a + (b - a) * t;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const idx = (y * size + x) * 4;
 
-      // outside the rounded square → transparent
-      if (x < left || x >= right || y < top || y >= bottom) {
-        continue; // alpha 0
-      }
-      const cx = Math.max(left + radius, Math.min(x, right - 1 - radius));
-      const cy = Math.max(top + radius, Math.min(y, bottom - 1 - radius));
-      if ((x - cx) ** 2 + (y - cy) ** 2 > radius ** 2) {
-        continue;
-      }
+      // diagonal gold gradient, top-left → bottom-right of the artwork
+      const g = Math.min(1, Math.max(0, (x - left + (y - top)) / (2 * art)));
+      const color = [lerp(gold1[0], gold2[0], g), lerp(gold1[1], gold2[1], g), lerp(gold1[2], gold2[2], g)];
 
-      let color = bg;
-      // ruled paper lines
-      if (x >= lineStart && x <= lineEnd && lines.some((ly) => Math.abs(y - ly) <= lineH)) {
-        color = paper;
-      }
+      // rounded-rect SDF → keycap outline stroke (with 1 px AA feather)
+      const qx = Math.abs(x - cx) - (capHalf - capR);
+      const qy = Math.abs(y - cy) - (capHalf - capR);
+      const dx = Math.max(qx, 0);
+      const dy = Math.max(qy, 0);
+      const dist = Math.min(Math.max(qx, qy), 0) + Math.hypot(dx, dy) - capR;
+      const inStroke = Math.abs(dist) <= strokeHalf;
       // the golden period
-      if ((x - dotX) ** 2 + (y - dotY) ** 2 <= dotR ** 2) {
-        color = gold;
-      }
+      const inDot = (x - cx) ** 2 + (y - cy) ** 2 <= dotR ** 2;
 
-      rgba[idx] = color[0];
-      rgba[idx + 1] = color[1];
-      rgba[idx + 2] = color[2];
+      const bgOrGold = inStroke || inDot ? color : paper;
+      rgba[idx] = bgOrGold[0];
+      rgba[idx + 1] = bgOrGold[1];
+      rgba[idx + 2] = bgOrGold[2];
       rgba[idx + 3] = 255;
     }
   }
