@@ -172,11 +172,11 @@ export function createDemoStream(): DemoStream {
     ctx.fillStyle = "#eceae4";
     ctx.font = "600 44px ui-sans-serif, system-ui, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("ZJKVM Demo Capture", 48, 200);
+    ctx.fillText(`ZJKVM ${t("demo.title")}`, 48, 200);
 
     ctx.fillStyle = "#a8a399";
     ctx.font = "24px ui-monospace, Menlo, monospace";
-    ctx.fillText(`${W}×${H} · 24fps · virtual UVC`, 48, 236);
+    ctx.fillText(`${W}×${H} · 24fps · ${t("demo.uvc")}`, 48, 236);
 
     // Clock
     const clock = now.toLocaleTimeString("en-GB");

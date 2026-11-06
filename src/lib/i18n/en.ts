@@ -168,6 +168,8 @@ export const EN = {
   "demo.hidReleased": "released",
   "demo.mouseLabel": "Mouse",
   "demo.reports": "reports",
+  "demo.title": "Demo Capture",
+  "demo.uvc": "virtual UVC",
   "demo.keysLabel": "KEYS",
   "demo.keysNone": "KEYS —",
   "demo.mod.lctrl": "LCtrl",

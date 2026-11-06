@@ -166,6 +166,8 @@ export const ZH: Record<TKey, string> = {
   "demo.hidReleased": "已松开",
   "demo.mouseLabel": "鼠标",
   "demo.reports": "报文数",
+  "demo.title": "演示采集卡",
+  "demo.uvc": "虚拟 UVC",
   "demo.keysLabel": "键位",
   "demo.keysNone": "按键 —",
   "demo.mod.lctrl": "左Ctrl",
