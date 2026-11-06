@@ -2,3 +2,9 @@ minimumReleaseAge: 0
 allowBuilds:
   esbuild: true
   workerd: true
+
+# Dependency overrides (kept in sync with the blog repo):
+# - glob: @sentry/bundler-plugins (lighthouse transitive) pins ^13.0.6 — lift to the
+#   fixed 14.0.2+ (GHSA-3g3m-2fjr-6pw4; its minimatch ^11.0.2 also clears GHSA-g3hv-75wg-m249)
+overrides:
+  glob@^13.0.6: ^14.0.2
