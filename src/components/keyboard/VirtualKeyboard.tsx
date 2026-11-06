@@ -111,13 +111,16 @@ const ROWS: VKey[][] = [
     K("ShiftRight", "Shift", 2.3),
   ],
   [
-    // Right side mirrors an Apple/MX keyboard: Alt⌥, Cmd⌘ (MetaRight), Ctrl
+    // Left of Space is PC 104-key order (Ctrl Win Alt); on a macOS target the
+    // inner pair swaps (macModifierOrder) and it reads Ctrl ⌥ ⌘. Right of
+    // Space copies the MX Keys asymmetry minus its fn key (HID cannot inject
+    // fn and a dead keycap teaches nothing): alt/cmd, ctrl/opt, no Win on the
+    // right — Space absorbs the spare width.
     K("ControlLeft", "Ctrl", 1.5),
     K("MetaLeft", "Win", 1.5),
     K("AltLeft", "Alt", 1.2),
-    K("Space", "", 6.9),
+    K("Space", "", 8.1),
     K("AltRight", "Alt", 1.2),
-    K("MetaRight", "Win", 1.2),
     K("ControlRight", "Ctrl", 1.5),
   ],
 ];
@@ -136,23 +139,47 @@ const CONTROL_KEYS: VKey[] = [
 
 const ARROWS: VKey[] = [K("ArrowUp", "↑"), K("ArrowLeft", "←"), K("ArrowDown", "↓"), K("ArrowRight", "→")];
 
-/** Modifier dual legends (MX Keys style): both OS flavors printed on the same
- *  keycap — the local machine's flavor gets the bright legend, the other is
- *  dimmed. The HID codes are positional and identical; MetaLeft is Cmd on a
- *  macOS target. No toggle needed: both names are always visible. */
+/** Modifier dual legends, MX Keys keycap pairing: keyed by the pre-swap code
+ *  (the physical position) and naming what that position does per target
+ *  flavor — win position = Win/⌥ Opt, alt positions = Alt/⌘ Cmd, and the
+ *  outer right ctrl = Ctrl/⌥ Opt (MX prints ctrl/opt⌥ there). The local
+ *  machine's flavor gets the bright legend, the other is dimmed. */
 const MODIFIER_LEGENDS: Record<string, { win: string; mac: string }> = {
-  MetaLeft: { win: "Win", mac: "⌘ Cmd" },
-  MetaRight: { win: "Win", mac: "⌘ Cmd" },
-  AltLeft: { win: "Alt", mac: "⌥ Opt" },
-  AltRight: { win: "Alt", mac: "⌥ Opt" },
+  MetaLeft: { win: "Win", mac: "⌥ Opt" },
+  AltLeft: { win: "Alt", mac: "⌘ Cmd" },
+  AltRight: { win: "Alt", mac: "⌘ Cmd" },
+  ControlRight: { win: "Ctrl", mac: "⌥ Opt" },
 };
-/** Compact macOS forms for the tight mobile rows (single legend there). */
+/** Compact macOS forms for the tight mobile rows (single legend there),
+ *  keyed by position like MODIFIER_LEGENDS. */
 const MAC_LABELS_COMPACT: Record<string, string> = {
-  MetaLeft: "⌘",
-  MetaRight: "⌘",
-  AltLeft: "⌥",
-  AltRight: "⌥",
+  MetaLeft: "⌥",
+  AltLeft: "⌘",
+  AltRight: "⌘",
+  ControlRight: "⌥",
 };
+
+/** MX Keys parity on a macOS target: Logitech's Mac layout remaps the inner
+ *  pairs — the Win-position key sends ⌥ (Alt) and the Alt-position keys send
+ *  ⌘ (Meta) — so ⌘ sits next to Space like on an Apple keyboard; the outer
+ *  right Ctrl becomes ⌥ too (there is no Win key on MX's right side). Codes
+ *  and legends move together; Windows targets keep the standard 104-key
+ *  order. */
+function macModifierOrder(key: VKey, mac: boolean): VKey {
+  if (!mac) return key;
+  switch (key.code) {
+    case "MetaLeft":
+      return { ...key, code: "AltLeft" };
+    case "AltLeft":
+      return { ...key, code: "MetaLeft" };
+    case "AltRight":
+      return { ...key, code: "MetaRight" };
+    case "ControlRight":
+      return { ...key, code: "AltRight" };
+    default:
+      return key;
+  }
+}
 
 /** Full numpad cluster: 4-column grid, + and ⏎ span two rows, 0 spans two columns. */
 const NUMPAD: VKey[][] = [
@@ -267,6 +294,8 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   const reportRef = useRef(new KeyboardReport());
   const latchedRef = useRef(new Set<string>());
   const [pressed, setPressed] = useState<Set<string>>(new Set());
+  /* Reactive mirror of latchedRef — drives the keycap shift flip. */
+  const [latched, setLatched] = useState<Set<string>>(new Set());
 
   /* Floating window position (desktop). null = not measured yet — the layout
      effect places a fresh window bottom-center and clamps saved ones. */
@@ -348,6 +377,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       return next;
     });
   };
+  const syncLatched = () => setLatched(new Set(latchedRef.current));
 
   /** pointerdown on a key */
   const keyPress = async (key: VKey) => {
@@ -362,6 +392,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         latchedRef.current.add(key.code);
         await send(reportRef.current.keyDown(key.code));
       }
+      syncLatched();
       return;
     }
     await send(reportRef.current.keyDown(key.code));
@@ -390,6 +421,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       await send(reportRef.current.keyUp(mod));
       visualRelease(mod);
     }
+    syncLatched();
   };
 
   /* releasing the keyboard entirely when it closes */
@@ -401,8 +433,15 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     };
   }, [send]);
 
-  const renderKey = (key: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean, grow?: boolean) => {
-    const legend = MODIFIER_LEGENDS[key.code];
+  /* Shift latch flips the keycaps (visual only — the report already carries
+     the modifier, the target machine applies the case). */
+  const shiftActive = latched.has("ShiftLeft") || latched.has("ShiftRight");
+
+  const renderKey = (rawKey: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean, grow?: boolean) => {
+    const key = macModifierOrder(rawKey, isMac);
+    // Legends key off the pre-swap code (the physical position) so each
+    // keycap prints the MX Keys pair; the effective code drives the press.
+    const legend = MODIFIER_LEGENDS[rawKey.code];
     let primary = key.label || key.code;
     let secondary: string | undefined;
     if (legend && !isMobile) {
@@ -412,7 +451,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     } else if (legend && isMobile) {
       // Same dual-OS idea, mobile-stacked: the local flavor's glyph on top,
       // the other OS's short name dimmed under it.
-      primary = isMac ? MAC_LABELS_COMPACT[key.code]! : legend.win;
+      primary = isMac ? MAC_LABELS_COMPACT[rawKey.code]! : legend.win;
       secondary = isMac ? legend.win.split(" ")[0]! : legend.mac.split(" ")[0]!;
     }
     return (
@@ -421,7 +460,11 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         type="button"
         aria-label={secondary ? `${primary} (${secondary})` : primary}
         data-pressed={pressed.has(key.code) || undefined}
-        className={cn("kvm-key select-none touch-none relative", secondary && "kvm-key--stack", extraClass)}
+        className={cn(
+          "kvm-key select-none touch-none relative",
+          (secondary || (!isMobile && key.shift)) && "kvm-key--stack",
+          extraClass,
+        )}
         style={{
           // inline (not a utility) on purpose: .kvm-key's unlayered min-width
           // would beat min-w-0 and force narrow mobile rows to overflow
@@ -443,13 +486,27 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         }}
         onContextMenu={(event) => event.preventDefault()}
       >
-        {!isMobile && key.shift && (
-          <span aria-hidden="true" className="absolute left-1 top-0.5 text-[8px] leading-none text-ink-3">
-            {key.shift}
-          </span>
+        {!isMobile && legend ? (
+          // MX dual legend: equal-sized flavors with a hairline between —
+          // the local machine's flavor sits on top.
+          <>
+            <span>{primary}</span>
+            <span aria-hidden="true" className="h-px w-2/3 bg-line" />
+            <span className="text-ink-3">{secondary}</span>
+          </>
+        ) : !isMobile && key.shift ? (
+          // MX stacked shift pair: both glyphs, equal size; a latched Shift
+          // swaps which one reads bright — dim gray moves, no color change.
+          <>
+            <span className={cn(!shiftActive && "text-ink-3")}>{key.shift}</span>
+            <span className={cn(shiftActive && "text-ink-3")}>{primary}</span>
+          </>
+        ) : key.icon ? (
+          <key.icon aria-hidden="true" className="size-4" />
+        ) : (
+          <span>{shiftActive && /^[a-z]$/.test(primary) ? primary.toUpperCase() : primary}</span>
         )}
-        {key.icon ? <key.icon aria-hidden="true" className="size-4" /> : <span>{primary}</span>}
-        {secondary && (
+        {secondary && isMobile && (
           <span aria-hidden="true" className="text-[9px] leading-none text-ink-3">
             {secondary}
           </span>
