@@ -291,6 +291,19 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     setPos(clampPos(saved ?? fresh, el.offsetWidth, el.offsetHeight));
   }, [isMobile]);
 
+  /* Desktop: keep the floating window inside a reshaped viewport (rotate,
+     snapped tiling, devtools) so the drag handle never strands off-screen. */
+  useEffect(() => {
+    if (isMobile) return;
+    const onResize = () => {
+      const el = panelRef.current;
+      if (!el || !posRef.current) return;
+      setPos(clampPos(posRef.current, el.offsetWidth, el.offsetHeight));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [isMobile]);
+
   const onHeaderPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (isMobile || !posRef.current || event.button !== 0) return;
     if (event.target instanceof HTMLElement && event.target.closest("button")) return;
