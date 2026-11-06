@@ -296,6 +296,10 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   const [pressed, setPressed] = useState<Set<string>>(new Set());
   /* Reactive mirror of latchedRef — drives the keycap shift flip. */
   const [latched, setLatched] = useState<Set<string>>(new Set());
+  /* Caps lock as the virtual keyboard sees it: a Caps tap sends a full
+     press+release (caps is a toggle on the target), and the optimistic
+     local mirror flips the letter keycaps until the next tap. */
+  const [capsOn, setCapsOn] = useState(false);
 
   /* Floating window position (desktop). null = not measured yet — the layout
      effect places a fresh window bottom-center and clamps saved ones. */
@@ -379,6 +383,32 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
   };
   const syncLatched = () => setLatched(new Set(latchedRef.current));
 
+  /* A latched modifier never hangs forever: if nothing completes the combo
+     within 5 s of the last latch, release it and drop the keycap highlight
+     (the "stuck long-press" feeling). */
+  const releaseTimerRef = useRef<number | null>(null);
+  const disarmReleaseTimer = () => {
+    if (releaseTimerRef.current !== null) {
+      window.clearTimeout(releaseTimerRef.current);
+      releaseTimerRef.current = null;
+    }
+  };
+  const armReleaseTimer = () => {
+    disarmReleaseTimer();
+    if (latchedRef.current.size === 0) return;
+    releaseTimerRef.current = window.setTimeout(() => {
+      releaseTimerRef.current = null;
+      void (async () => {
+        for (const mod of latchedRef.current) {
+          await send(reportRef.current.keyUp(mod));
+          visualRelease(mod);
+        }
+        latchedRef.current.clear();
+        syncLatched();
+      })();
+    }, 5000);
+  };
+
   /** pointerdown on a key */
   const keyPress = async (key: VKey) => {
     visualPress(key.code);
@@ -393,6 +423,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         await send(reportRef.current.keyDown(key.code));
       }
       syncLatched();
+      armReleaseTimer();
       return;
     }
     await send(reportRef.current.keyDown(key.code));
@@ -414,6 +445,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     }
     visualRelease(key.code);
     await send(reportRef.current.keyUp(key.code));
+    if (key.code === "CapsLock") setCapsOn((v) => !v);
 
     // release any latched modifiers now that the combo completed
     for (const mod of latchedRef.current) {
@@ -422,6 +454,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
       visualRelease(mod);
     }
     syncLatched();
+    disarmReleaseTimer();
   };
 
   /* releasing the keyboard entirely when it closes */
@@ -429,13 +462,20 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     return () => {
       const report = reportRef.current.reset();
       latchedRef.current.clear();
+      setCapsOn(false);
+      if (releaseTimerRef.current !== null) {
+        window.clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
       void send(report);
     };
   }, [send]);
 
   /* Shift latch flips the keycaps (visual only — the report already carries
-     the modifier, the target machine applies the case). */
+     the modifier, the target machine applies the case). Caps lock flips the
+     same way and stays flipped until Caps is tapped again. */
   const shiftActive = latched.has("ShiftLeft") || latched.has("ShiftRight");
+  const upperActive = shiftActive || capsOn;
 
   const renderKey = (rawKey: VKey, extraClass?: string, fullHeight?: boolean, skipWidth?: boolean, grow?: boolean) => {
     const key = macModifierOrder(rawKey, isMac);
@@ -459,7 +499,7 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
         key={key.code}
         type="button"
         aria-label={secondary ? `${primary} (${secondary})` : primary}
-        data-pressed={pressed.has(key.code) || undefined}
+        data-pressed={pressed.has(key.code) || (key.code === "CapsLock" && capsOn) || undefined}
         className={cn(
           "kvm-key select-none touch-none relative",
           (secondary || (!isMobile && key.shift)) && "kvm-key--stack",
@@ -498,13 +538,13 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
           // MX stacked shift pair: both glyphs, equal size; a latched Shift
           // swaps which one reads bright — dim gray moves, no color change.
           <>
-            <span className={cn(!shiftActive && "text-ink-3")}>{key.shift}</span>
-            <span className={cn(shiftActive && "text-ink-3")}>{primary}</span>
+            <span className={cn(!upperActive && "text-ink-3")}>{key.shift}</span>
+            <span className={cn(upperActive && "text-ink-3")}>{primary}</span>
           </>
         ) : key.icon ? (
           <key.icon aria-hidden="true" className="size-4" />
         ) : (
-          <span>{shiftActive && /^[a-z]$/.test(primary) ? primary.toUpperCase() : primary}</span>
+          <span>{upperActive && /^[a-z]$/.test(primary) ? primary.toUpperCase() : primary}</span>
         )}
         {secondary && isMobile && (
           <span aria-hidden="true" className="text-[9px] leading-none text-ink-3">

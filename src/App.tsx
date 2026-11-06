@@ -32,7 +32,7 @@ import {
   wheelDirectionAtom,
   wheelIntervalAtom,
 } from "@/state/atoms";
-import { checkMic, connectVideo, refreshVideoDevices, watchVideoHotplug } from "@/state/connection";
+import { checkMic, watchVideoHotplug } from "@/state/connection";
 
 export default function App() {
   const aboutOpen = useAtomValue(aboutOpenAtom);
@@ -105,13 +105,9 @@ export default function App() {
   useEffect(() => storage.setToolbarCollapsed(toolbarCollapsed), [toolbarCollapsed]);
   useEffect(() => storage.setToolbarPos(toolbarPos), [toolbarPos]);
 
-  /* Auto-open the saved capture card on boot (camera only; serial needs a click) */
-  useEffect(() => {
-    const saved = getDefaultStore().get(videoDeviceIdAtom);
-    if (saved) {
-      void refreshVideoDevices().then(() => connectVideo());
-    }
-  }, []);
+  /* Video never connects on its own — every getUserMedia is behind a click.
+     The saved device id is a prefill for the device panel, not an autoplay
+     permission; the cold-start effect opens that panel instead. */
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-ink">
