@@ -216,7 +216,7 @@ export function DevicePanel() {
         <Dropdown
           id="panel-video-device"
           label={t("video.device")}
-          value={deviceId}
+          value={videoState === "disconnected" ? "" : deviceId}
           onChange={handleDevice}
           onOpen={() => void probeVideoDevices()}
           options={devices.map((device) => ({
