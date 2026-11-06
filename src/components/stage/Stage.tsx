@@ -6,7 +6,7 @@ import { computeVideoRect } from "@/components/stage/videoRect";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
-import { EYEBROW, MONO_CHIP } from "@/lib/styles";
+import { MONO_CHIP } from "@/lib/styles";
 import {
   activePanelAtom,
   mouseStyleAtom,
@@ -206,7 +206,6 @@ function NoSignal({ onConnect }: { onConnect: () => void }) {
   return (
     <div className="absolute inset-0 z-20 flex items-center justify-center overflow-x-clip">
       <div className="relative flex w-full max-w-2xl flex-col items-center gap-2 px-6 text-center">
-        <p className={EYEBROW}>ZJKVM</p>
         <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{t("stage.noSignal")}</h2>
         <WiringDiagram />
         <button
