@@ -48,6 +48,8 @@ export const usbConnectedAtom = atom<boolean | null>(null);
 export const firmwareAtom = atom<string | null>(null);
 /** Mic permission for the capture-card audio track; null = unknown. */
 export const micGrantedAtom = atom<boolean | null>(null);
+/** Camera permission for the capture card itself; null = unknown. */
+export const cameraGrantedAtom = atom<boolean | null>(null);
 export const videoStatsAtom = atom<{ width: number; height: number; fps: number | null }>({
   width: 0,
   height: 0,

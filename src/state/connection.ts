@@ -17,6 +17,7 @@ import {
 import { checkPermission, requestPermission } from "@/lib/media/permission";
 import {
   audioByGroupAtom,
+  cameraGrantedAtom,
   demoModeAtom,
   firmwareAtom,
   ledsAtom,
@@ -70,6 +71,24 @@ export async function probeVideoDevices(): Promise<void> {
 /** Sync the mic permission into the atom (statusbar chip state). */
 export async function checkMic(): Promise<void> {
   store.set(micGrantedAtom, await checkPermission("microphone"));
+}
+
+/** Sync the camera permission into the atom (device-panel chip state). */
+export async function checkCamera(): Promise<void> {
+  store.set(cameraGrantedAtom, await checkPermission("camera"));
+}
+
+/** Grant the camera, then re-enumerate — device labels are anonymous until
+ *  the grant, so the device dropdown fills in right after. */
+export async function grantCamera(): Promise<boolean> {
+  const granted = await requestPermission("camera");
+  store.set(cameraGrantedAtom, granted);
+  if (!granted) {
+    pushToast(t("connect.cameraDenied"), "danger");
+    return false;
+  }
+  await probeVideoDevices();
+  return true;
 }
 
 /** Grant the mic, then re-enumerate and reopen the video stream so the
@@ -129,6 +148,7 @@ export async function connectVideo(deviceId?: string): Promise<boolean> {
     store.set(videoStreamAtom, camera.getStream());
     store.set(videoStateAtom, "connected");
     store.set(videoDeviceIdAtom, resolved);
+    store.set(cameraGrantedAtom, true);
     return true;
   } catch (error) {
     store.set(videoStateAtom, "disconnected");

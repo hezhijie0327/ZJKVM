@@ -1,4 +1,4 @@
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { MouseInput } from "@/components/input/AbsoluteMouse";
 import { PhysicalKeyboard } from "@/components/input/PhysicalKeyboard";
@@ -14,25 +14,21 @@ import * as storage from "@/lib/storage";
 import { watchSystemTheme } from "@/lib/theme";
 import {
   aboutOpenAtom,
-  activePanelAtom,
   customResolutionsAtom,
-  demoModeAtom,
   jigglerAtom,
   mouseModeAtom,
   mouseStyleAtom,
   resolutionAtom,
   rotationAtom,
   scaleModeAtom,
-  serialStateAtom,
   toolbarCollapsedAtom,
   toolbarPosAtom,
   videoDeviceIdAtom,
-  videoStateAtom,
   virtualKeyboardOpenAtom,
   wheelDirectionAtom,
   wheelIntervalAtom,
 } from "@/state/atoms";
-import { checkMic, watchVideoHotplug } from "@/state/connection";
+import { checkCamera, checkMic, watchVideoHotplug } from "@/state/connection";
 
 export default function App() {
   const aboutOpen = useAtomValue(aboutOpenAtom);
@@ -41,28 +37,13 @@ export default function App() {
   const virtualKeyboardOpen = useAtomValue(virtualKeyboardOpenAtom);
   const setVirtualKeyboardOpen = useSetAtom(virtualKeyboardOpenAtom);
 
-  /* Boot: theme watching, device lists + hotplug, mic permission probe, gate */
+  /* Boot: theme watching, device lists + hotplug, permission probes */
   useEffect(() => {
     watchSystemTheme();
     const unwatch = watchVideoHotplug();
     void checkMic();
+    void checkCamera();
     return unwatch;
-  }, []);
-
-  /* Cold start: nothing hooked up? open the unified device panel — the
-     connect gate retired once device management moved into the toolbar. */
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const store = getDefaultStore();
-      if (
-        store.get(videoStateAtom) === "disconnected" &&
-        store.get(serialStateAtom) === "disconnected" &&
-        !store.get(demoModeAtom)
-      ) {
-        store.set(activePanelAtom, "devices");
-      }
-    }, 500);
-    return () => window.clearTimeout(timer);
   }, []);
 
   /* Jiggler mode follows the atom (also on boot) and persists with the

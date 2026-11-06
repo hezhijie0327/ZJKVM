@@ -13,6 +13,7 @@ import { isCaptureLike } from "@/lib/media/camera";
 import * as storage from "@/lib/storage";
 import { DIVIDE_LIST, EYEBROW, META, PANEL_COL, PANEL_ROW, PANEL_STATE_CHIP } from "@/lib/styles";
 import {
+  cameraGrantedAtom,
   customResolutionsAtom,
   demoModeAtom,
   micGrantedAtom,
@@ -31,6 +32,7 @@ import {
   connectVideo,
   disconnectSerial,
   disconnectVideo,
+  grantCamera,
   grantMic,
   openSerial,
   probeVideoDevices,
@@ -64,6 +66,7 @@ export function DevicePanel() {
   const serialState = useAtomValue(serialStateAtom);
   const demo = useAtomValue(demoModeAtom);
   const micGranted = useAtomValue(micGrantedAtom);
+  const cameraGranted = useAtomValue(cameraGrantedAtom);
   const [volume, setVolume] = useAtom(volumeAtom);
   const [muted, setMuted] = useAtom(mutedAtom);
 
@@ -122,6 +125,86 @@ export function DevicePanel() {
 
   return (
     <div className={DIVIDE_LIST}>
+      {/* ── HID 串口:键鼠注入链路 ── */}
+      <p aria-hidden="true" className={cn(EYEBROW, "px-4 pt-3 pb-1")}>
+        SERIAL
+      </p>
+      <div className={PANEL_ROW}>
+        <span className={ROW_LABEL}>{t("status.serial")}</span>
+        <span className="flex items-center gap-1.5">
+          <span
+            role="img"
+            aria-label={
+              demo
+                ? t("status.demo")
+                : serialState === "connected"
+                  ? t("device.connected")
+                  : serialState === "connecting"
+                    ? t("connect.connecting")
+                    : t("device.disconnected")
+            }
+            className={cn(
+              PANEL_STATE_CHIP,
+              serialState === "connected" ? "border-ok/60 text-ok" : "text-ink-3",
+              demo && "border-accent/60 text-accent",
+            )}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-1.5 rounded-full",
+                serialState === "connected"
+                  ? "bg-ok"
+                  : serialState === "connecting"
+                    ? "bg-warning"
+                    : demo
+                      ? "bg-accent-strong"
+                      : "bg-line",
+              )}
+            />
+            {demo
+              ? t("status.demo")
+              : serialState === "connected"
+                ? t("device.connected")
+                : serialState === "connecting"
+                  ? t("connect.connecting")
+                  : t("device.disconnected")}
+          </span>
+          {demo ? null : serialState === "connected" ? (
+            <Button className="h-8 px-3" onClick={() => void disconnectSerial()}>
+              {t("status.disconnectSerial")}
+            </Button>
+          ) : serialState !== "connecting" ? (
+            <Button variant="primary" className="h-8 px-3" onClick={() => void openSerial()}>
+              {t("connect.serialButton")}
+            </Button>
+          ) : null}
+        </span>
+      </div>
+
+      {/* ── 音频:输出音量 ── */}
+      <p aria-hidden="true" className={cn(EYEBROW, "px-4 pt-3 pb-1")}>
+        AUDIO
+      </p>
+      <div className={cn(PANEL_ROW, "flex-col items-stretch gap-2 py-3")}>
+        <div className="flex items-center justify-between">
+          <span className={ROW_LABEL}>{t("audio.volume")}</span>
+          {/* switch = sound audible (NOT mute) — the inverted semantics read
+              like the toggle kept switching itself off */}
+          <Switch checked={!muted} onChange={(next) => setMuted(!next)} label={t("audio.sound")} />
+        </div>
+        <Slider
+          value={Math.round(volume * 100)}
+          min={0}
+          max={100}
+          onChange={(value) => {
+            setVolume(value / 100);
+            setMuted(false);
+          }}
+          label={t("audio.volume")}
+          display={`${Math.round(volume * 100)}%`}
+        />
+      </div>
       {/* ── 采集卡:设备选择 + 连接状态 + 显示设置 ── */}
       <p aria-hidden="true" className={cn(EYEBROW, "px-4 pt-3 pb-1")}>
         VIDEO
@@ -269,86 +352,30 @@ export function DevicePanel() {
       </div>
       {/* 统计芯片跟随视频流常驻(状态胶囊),不再提供开关 */}
 
-      {/* ── HID 串口:键鼠注入链路 ── */}
+      {/* ── 浏览器权限:相机 + 麦克风授权 ── */}
       <p aria-hidden="true" className={cn(EYEBROW, "px-4 pt-3 pb-1")}>
-        SERIAL
+        PERMISSIONS
       </p>
-      <div className={PANEL_ROW}>
-        <span className={ROW_LABEL}>{t("status.serial")}</span>
-        <span className="flex items-center gap-1.5">
-          <span
-            role="img"
-            aria-label={
-              demo
-                ? t("status.demo")
-                : serialState === "connected"
-                  ? t("device.connected")
-                  : serialState === "connecting"
-                    ? t("connect.connecting")
-                    : t("device.disconnected")
-            }
-            className={cn(
-              PANEL_STATE_CHIP,
-              serialState === "connected" ? "border-ok/60 text-ok" : "text-ink-3",
-              demo && "border-accent/60 text-accent",
-            )}
-          >
+      {cameraGranted !== null && (
+        <div className={PANEL_ROW}>
+          <span className={ROW_LABEL}>{t("video.camera")}</span>
+          <span className="flex items-center gap-1.5">
             <span
-              aria-hidden="true"
-              className={cn(
-                "size-1.5 rounded-full",
-                serialState === "connected"
-                  ? "bg-ok"
-                  : serialState === "connecting"
-                    ? "bg-warning"
-                    : demo
-                      ? "bg-accent-strong"
-                      : "bg-line",
-              )}
-            />
-            {demo
-              ? t("status.demo")
-              : serialState === "connected"
-                ? t("device.connected")
-                : serialState === "connecting"
-                  ? t("connect.connecting")
-                  : t("device.disconnected")}
+              role="img"
+              aria-label={cameraGranted ? t("video.cameraGranted") : t("video.cameraRequest")}
+              className={cn(PANEL_STATE_CHIP, cameraGranted ? "border-ok/60 text-ok" : "text-ink-3")}
+            >
+              <span aria-hidden="true" className={cn("size-1.5 rounded-full", cameraGranted ? "bg-ok" : "bg-line")} />
+              {cameraGranted ? t("video.cameraGranted") : t("device.disconnected")}
+            </span>
+            {!cameraGranted && (
+              <Button variant="primary" className="h-8 px-3" onClick={() => void grantCamera()}>
+                {t("video.cameraRequest")}
+              </Button>
+            )}
           </span>
-          {demo ? null : serialState === "connected" ? (
-            <Button className="h-8 px-3" onClick={() => void disconnectSerial()}>
-              {t("status.disconnectSerial")}
-            </Button>
-          ) : serialState !== "connecting" ? (
-            <Button variant="primary" className="h-8 px-3" onClick={() => void openSerial()}>
-              {t("connect.serialButton")}
-            </Button>
-          ) : null}
-        </span>
-      </div>
-
-      {/* ── 音频:输出音量 + 麦克风授权 ── */}
-      <p aria-hidden="true" className={cn(EYEBROW, "px-4 pt-3 pb-1")}>
-        AUDIO
-      </p>
-      <div className={cn(PANEL_ROW, "flex-col items-stretch gap-2 py-3")}>
-        <div className="flex items-center justify-between">
-          <span className={ROW_LABEL}>{t("audio.volume")}</span>
-          {/* switch = sound audible (NOT mute) — the inverted semantics read
-              like the toggle kept switching itself off */}
-          <Switch checked={!muted} onChange={(next) => setMuted(!next)} label={t("audio.sound")} />
         </div>
-        <Slider
-          value={Math.round(volume * 100)}
-          min={0}
-          max={100}
-          onChange={(value) => {
-            setVolume(value / 100);
-            setMuted(false);
-          }}
-          label={t("audio.volume")}
-          display={`${Math.round(volume * 100)}%`}
-        />
-      </div>
+      )}
       {micGranted !== null && (
         <div className={PANEL_ROW}>
           <span className={ROW_LABEL}>{t("audio.mic")}</span>
