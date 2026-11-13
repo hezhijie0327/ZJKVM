@@ -4,30 +4,12 @@
 // {name} 形式的占位符由 t(key, vars) 替换。
 
 export const EN = {
-  // 应用
-  "app.consoleTitle": "USB KVM Console",
-
   // 通用
-  "common.ok": "OK",
-  "common.cancel": "Cancel",
   "common.close": "Close",
-  "common.delete": "Delete",
-  "common.save": "Save",
   "common.add": "Add",
-  "common.apply": "Apply",
-  "common.reset": "Reset",
-  "common.default": "Default",
-  "common.custom": "Custom",
   "common.on": "On",
   "common.off": "Off",
   "common.auto": "Auto",
-  "common.unknown": "Unknown",
-  "common.copy": "Copy",
-  "common.copied": "Copied",
-  "common.download": "Download",
-  "common.retry": "Retry",
-  "common.connect": "Connect",
-  "common.disconnect": "Disconnect",
 
   // 能力检测
   "browser.serialMissing":
@@ -51,16 +33,19 @@ export const EN = {
   "device.state": "Link",
   "device.connected": "Connected",
   "device.disconnected": "Disconnected",
+  "device.resRange": "Valid range 160×120 – 7680×4320",
 
   // 导航与关于
   "nav.theme": "Theme",
   "nav.lang": "Language",
   "nav.help": "About",
+  "nav.skipVideo": "Skip to video",
+  "theme.auto": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
   "about.demoButton": "Try demo mode",
   "about.demoStop": "Stop demo mode",
-  "about.demoRunning": "Demo running",
   "about.demoNote": "Simulates the capture card and key/mouse injection — no hardware needed.",
-  "toast.demoStarted": "Demo mode started",
   "about.title": "About ZJKVM",
   "about.feature1": "HDMI capture preview at up to 4K60 with rotation and zoom",
   "about.feature2": "Full keyboard and mouse injection, including wake-lock safe physical forwarding",
@@ -68,8 +53,6 @@ export const EN = {
   "about.feature4": "Runs in any Chromium browser — Windows, macOS and Linux targets",
   "about.blurb":
     "ZJKVM turns a USB capture card and a CH9329 HID dongle into a full KVM console that runs entirely in your browser — nothing you type or see ever leaves your machine.",
-  "about.demo":
-    "No hardware at hand? Demo mode simulates the whole stack — a canvas test card stands in for the capture card and every injection is echoed back on screen.",
 
   // LED 锁定状态
   "led.num": "NUM",
@@ -79,14 +62,10 @@ export const EN = {
 
   // 状态芯片
   "status.hid": "HID",
-  "status.mic": "Mic",
   "status.disconnectVideo": "Disconnect video",
   "status.disconnectSerial": "Disconnect serial",
   "status.demoStop": "Stop demo mode",
   "status.info": "Status",
-  "status.collapse": "Hide status chips",
-  "status.expand": "Show status chips",
-  "status.chips": "Connection status",
   "status.hidHint": "USB enumeration on the controlled machine — dim means key/mouse injections have no receiver",
   "status.serial": "Serial link",
   "status.demo": "DEMO",
@@ -94,6 +73,7 @@ export const EN = {
   "status.statsHint": "Capture resolution & frame rate",
 
   // 舞台
+  "stage.title": "Remote video",
   "stage.noSignal": "Waiting for video",
   "stage.waiting": "Waiting for the video signal…",
   "stage.noHdmi": "No HDMI signal",
@@ -109,7 +89,6 @@ export const EN = {
   // 工具栏
   "tb.keyboard": "Keyboard",
   "tb.mouse": "Mouse",
-  "tb.record": "Record",
   "tb.screenshot": "Screenshot",
   "tb.pip": "Picture in picture",
   "tb.fullscreen": "Fullscreen",
@@ -132,14 +111,11 @@ export const EN = {
   // 音频面板
   "audio.volume": "Volume",
   "audio.sound": "Sound",
-  "audio.mute": "Mute",
   "audio.mic": "Microphone",
   "audio.micRequest": "Grant microphone",
   "audio.micGranted": "Granted",
   "audio.micFail": "Microphone permission denied — check the browser site settings.",
   "toast.micGranted": "Microphone granted — capture-card audio joins on reopen",
-  "audio.micGrantedHint": "Mic granted — reopen the video if the capture card audio is still missing.",
-  "audio.micHint": "Mic not granted — capture-card audio joins once granted and the video reopens.",
   "audio.noAudio": "The current stream carries no audio track.",
 
   // 键盘
@@ -147,7 +123,6 @@ export const EN = {
   "kb.virtual": "Virtual keyboard",
   "kb.paste": "Clipboard paste",
   "kb.captureHint": "An input field has focus — forwarding paused.",
-  "paste.title": "Paste to target machine",
   "paste.placeholder": "Type or paste text (ASCII)…",
   "paste.send": "Preview & type",
   "paste.previewTitle": "Paste preview",
@@ -161,7 +136,6 @@ export const EN = {
   "paste.normal": "Standard",
   "paste.fast": "Fast",
   "paste.nonAscii": "Skipped {n} non-ASCII character(s) — HID cannot map them.",
-  "paste.empty": "Nothing to type.",
   "paste.sent": "Typed {n} characters",
   /* demo test card: pressed-key names */
   "demo.hidLabel": "HID report (8B)",
@@ -220,12 +194,9 @@ export const EN = {
   // 录制
   "rec.start": "Record",
   "rec.stop": "Stop",
-  "rec.hint": "Records the stream as WebM, written to disk while recording.",
-  "rec.fallbackHint": "Streaming file writes are unsupported here; the file downloads when you stop.",
-  "rec.screenshot": "Snapshot",
+  "rec.live": "Recording the screen",
 
   // 设置与其他
-  "settings.language": "Language",
   "demo.banner": "Demo mode — no hardware attached; HID reports are echoed on the test card.",
   "toast.snapSaved": "Snapshot saved",
   "toast.snapCopied": "Snapshot copied to clipboard",
@@ -240,7 +211,6 @@ export const EN = {
   "toast.videoLostGiveUp": "Video signal lost — reopen it from the toolbar",
   "toast.serialFail": "Could not open the serial port",
   "toast.serialReconnected": "Serial reconnected automatically",
-  "toast.macSent": "{name} sent",
 } as const;
 
 export type TKey = keyof typeof EN;

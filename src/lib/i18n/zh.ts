@@ -4,30 +4,12 @@
 import type { TKey } from "./en";
 
 export const ZH: Record<TKey, string> = {
-  // 应用
-  "app.consoleTitle": "USB KVM 控制台",
-
   // 通用
-  "common.ok": "确定",
-  "common.cancel": "取消",
   "common.close": "关闭",
-  "common.delete": "删除",
-  "common.save": "保存",
   "common.add": "添加",
-  "common.apply": "应用",
-  "common.reset": "重置",
-  "common.default": "默认",
-  "common.custom": "自定义",
   "common.on": "开",
   "common.off": "关",
   "common.auto": "自动",
-  "common.unknown": "未知",
-  "common.copy": "复制",
-  "common.copied": "已复制",
-  "common.download": "下载",
-  "common.retry": "重试",
-  "common.connect": "连接",
-  "common.disconnect": "断开",
 
   // 能力检测
   "browser.serialMissing": "当前浏览器不支持 Web Serial,键鼠注入需要桌面版 Chrome / Edge。",
@@ -49,16 +31,19 @@ export const ZH: Record<TKey, string> = {
   "device.state": "链路",
   "device.connected": "已连接",
   "device.disconnected": "未连接",
+  "device.resRange": "有效范围 160×120 – 7680×4320",
 
   // 导航与关于
   "nav.theme": "主题",
   "nav.lang": "语言",
   "nav.help": "关于",
+  "nav.skipVideo": "跳到视频",
+  "theme.auto": "跟随系统",
+  "theme.light": "亮色",
+  "theme.dark": "暗色",
   "about.demoButton": "试用演示模式",
   "about.demoStop": "停止演示",
-  "about.demoRunning": "演示运行中",
   "about.demoNote": "模拟采集卡与键鼠注入,无需真实硬件。",
-  "toast.demoStarted": "演示模式已开启",
   "about.title": "关于 ZJKVM",
   "about.feature1": "HDMI 采集预览,最高 4K60,支持旋转与缩放",
   "about.feature2": "完整键鼠注入,物理键盘转发安全适配省电策略",
@@ -66,8 +51,6 @@ export const ZH: Record<TKey, string> = {
   "about.feature4": "任意 Chromium 浏览器即可运行,支持 Windows / macOS / Linux 目标机",
   "about.blurb":
     "ZJKVM 把一张 USB 采集卡和一颗 CH9329 HID 芯片,变成跑在浏览器里的完整 KVM 控制台——键入的内容与画面不出本机。",
-  "about.demo":
-    "演示模式模拟了整条链路:画布测试卡代替采集卡,每一条键鼠注入报文都会回显在画面上,无需硬件即可验证键盘、鼠标、宏与 LED 读取。",
 
   // LED 锁定状态
   "led.num": "NUM",
@@ -77,14 +60,10 @@ export const ZH: Record<TKey, string> = {
 
   // 状态芯片
   "status.hid": "HID",
-  "status.mic": "麦克风",
   "status.disconnectVideo": "断开视频",
   "status.disconnectSerial": "断开串口",
   "status.demoStop": "停止演示",
   "status.info": "状态信息",
-  "status.collapse": "收起状态芯片",
-  "status.expand": "展开状态芯片",
-  "status.chips": "连接状态",
   "status.hidHint": "被控机的 USB 枚举状态,熄灭表示键鼠注入没有接收端",
   "status.serial": "串口",
   "status.demo": "演示",
@@ -92,6 +71,7 @@ export const ZH: Record<TKey, string> = {
   "status.statsHint": "采集分辨率与帧率",
 
   // 舞台
+  "stage.title": "远程画面",
   "stage.noSignal": "等待视频信号",
   "stage.waiting": "正在等待视频信号…",
   "stage.noHdmi": "HDMI 无信号",
@@ -107,7 +87,6 @@ export const ZH: Record<TKey, string> = {
   // 工具栏
   "tb.keyboard": "键盘",
   "tb.mouse": "鼠标",
-  "tb.record": "录制",
   "tb.screenshot": "截图",
   "tb.pip": "画中画",
   "tb.fullscreen": "全屏",
@@ -130,14 +109,11 @@ export const ZH: Record<TKey, string> = {
   // 音频面板
   "audio.volume": "音量",
   "audio.sound": "声音",
-  "audio.mute": "静音",
   "audio.mic": "麦克风",
   "audio.micRequest": "授权麦克风",
   "audio.micGranted": "已授权",
   "audio.micFail": "麦克风授权被拒绝——请检查浏览器站点设置。",
   "toast.micGranted": "麦克风已授权,重开后混入采集卡音频",
-  "audio.micGrantedHint": "麦克风已授权,若仍无采集卡音频请重开视频。",
-  "audio.micHint": "麦克风未授权——授权后重新打开视频即可混入采集卡音频。",
   "audio.noAudio": "当前视频流没有音轨。",
 
   // 键盘
@@ -145,7 +121,6 @@ export const ZH: Record<TKey, string> = {
   "kb.virtual": "虚拟键盘",
   "kb.paste": "剪贴板粘贴",
   "kb.captureHint": "输入框获得焦点,键盘转发已暂停。",
-  "paste.title": "粘贴到目标机",
   "paste.placeholder": "输入或粘贴文本(仅支持 ASCII)…",
   "paste.send": "预览并输入",
   "paste.previewTitle": "粘贴预览",
@@ -159,7 +134,6 @@ export const ZH: Record<TKey, string> = {
   "paste.normal": "标准",
   "paste.fast": "快",
   "paste.nonAscii": "已跳过 {n} 个非 ASCII 字符(HID 无法映射)。",
-  "paste.empty": "没有可输入的内容。",
   "paste.sent": "已输入 {n} 个字符",
   /* demo test card: pressed-key names */
   "demo.hidLabel": "键鼠报文（8B）",
@@ -218,12 +192,9 @@ export const ZH: Record<TKey, string> = {
   // 录制
   "rec.start": "录制",
   "rec.stop": "停止",
-  "rec.hint": "将视频流录制成 WebM,边录边写入磁盘。",
-  "rec.fallbackHint": "当前浏览器不支持边录边写盘,停止录制后一次性下载。",
-  "rec.screenshot": "截图",
+  "rec.live": "正在录制屏幕",
 
   // 设置与其他
-  "settings.language": "语言",
   "demo.banner": "演示模式——未连接真实硬件,键鼠注入报文会回显在测试卡上。",
   "toast.snapSaved": "截图已保存",
   "toast.snapCopied": "截图已复制到剪贴板",
@@ -238,5 +209,4 @@ export const ZH: Record<TKey, string> = {
   "toast.videoLostGiveUp": "视频信号丢失——请从工具栏重新打开视频",
   "toast.serialFail": "串口打开失败",
   "toast.serialReconnected": "串口已自动重连",
-  "toast.macSent": "已发送 {name}",
 };
