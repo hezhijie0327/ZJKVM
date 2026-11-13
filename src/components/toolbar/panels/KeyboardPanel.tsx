@@ -77,6 +77,10 @@ export function KeyboardPanel() {
       pushToast(t("paste.sent", { n: result.typed }));
       setText("");
       setPreviewOpen(false);
+    } catch {
+      // link dropped mid-stream (requireLink throws) — surface it, keep the
+      // text so the user can retry after reconnecting
+      pushToast(t("toast.serialFail"), "danger");
     } finally {
       setTyping(false);
     }
@@ -158,7 +162,7 @@ export function KeyboardPanel() {
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 pb-5">
-          <Button className="h-9 px-4" onClick={cancelSend} disabled={!typing}>
+          <Button className="h-9 px-4" onClick={cancelSend}>
             {t("paste.cancel")}
           </Button>
           <Button

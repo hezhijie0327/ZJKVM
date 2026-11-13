@@ -471,6 +471,35 @@ export function VirtualKeyboard({ onClose }: { onClose: () => void }) {
     };
   }, [send]);
 
+  /* Esc closes the floating window (noVNC parity). The event still travels
+     on to the physical-forward path, so Esc reaches the target machine too —
+     KVM semantics, not a swallowed key. */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  /* Window blur with keys still down (Alt-Tab, mission control) must release
+     them on the target — the same guard the physical forwarder has. */
+  useEffect(() => {
+    const onBlur = () => {
+      const report = reportRef.current.reset();
+      latchedRef.current.clear();
+      setLatched(new Set());
+      setPressed(new Set());
+      if (releaseTimerRef.current !== null) {
+        window.clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
+      void send(report);
+    };
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [send]);
+
   /* Shift latch flips the keycaps (visual only — the report already carries
      the modifier, the target machine applies the case). Caps lock flips the
      same way and stays flipped until Caps is tapped again. */
