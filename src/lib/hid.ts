@@ -50,12 +50,18 @@ export function typeText(text: string, intervalMs = 50, options?: TypeOptions): 
     let typed = 0;
     let skipped = 0;
 
-    for (const char of text) {
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
       if (options?.isCancelled?.()) {
         break;
       }
       const ascii = char.charCodeAt(0);
       if (char === "\n" || char === "\r") {
+        // CRLF is one line break — skip the \n of a \r\n pair so Windows
+        // sources don't type a doubled Enter.
+        if (char === "\r" && text[i + 1] === "\n") {
+          continue;
+        }
         await press(report, "Enter");
         await sleep(intervalMs);
         await release(report, "Enter");
