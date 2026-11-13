@@ -1,0 +1,21 @@
+# Response headers for Cloudflare Workers Static Assets (lands at the dist/
+# root at build time, copied from public/ by Vite — same convention as the
+# zjblog family config).
+#
+# Icon family: Workers assets carry no default Cache-Control, so Cloudflare's
+# zone cache applies its own default edge TTL to image types and an updated
+# icon keeps serving the stale copy after a deploy (the 2026-11 iOS case).
+# A short TTL + must-revalidate keeps the caching benefit while forcing a
+# revalidation against the deploy's fresh etag.
+
+/apple-touch-icon.png
+  Cache-Control: max-age=3600, must-revalidate
+
+/favicon.svg
+  Cache-Control: max-age=3600, must-revalidate
+
+/icons/*
+  Cache-Control: max-age=3600, must-revalidate
+
+/manifest.json
+  Cache-Control: max-age=3600, must-revalidate
