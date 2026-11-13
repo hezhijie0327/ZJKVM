@@ -22,18 +22,19 @@ ZJKVM 是 ZJ 设计家族(参见 zjblog `DESIGN.md`)的第一个 **app 形态**�
 
 ```
 Navigation   h-14 sticky 毛玻璃,serif 词标 ZJKVM + 金色句点(家族签名,原样)
+  └─ 状态信息菜单  Activity 图标钮 → popover:统计(分辨率/帧率)· 演示(可停)
+                  · HID · LED · 固件芯片;REC 计时条以危险芯片住在导航右侧
 Stage        flex-1 满幅,横线纸纹底,视频 object-contain 居中
-  ├─ 统计芯片   入画(分辨率/帧率),住在底部芯片胶囊里(Stage 发布 pictureRectAtom)
-  ├─ 工具栏     顶部悬浮玻璃胶囊(draggable,fine pointer);移动端 fixed 底部;
+  ├─ 工具栏     顶部悬浮玻璃胶囊(free drag + 收起,双端一致);
   │             设备(设备面板:采集卡/串口/音频 统一管理,连带画面设置)· 键盘 · 鼠标
-  ├─ REC 徽章   画面内容区右上角(letterbox 感知),画面上唯一的常驻叠加
-  └─ 无信号态   hollow-text 幽灵水印 "NO SIGNAL" + serif 标题 + 纸片按钮
-Statusbar    底部悬浮层:演示横幅 + 反馈芯片胶囊(演示 · 统计 · HID · LED · 固件),
-             md+ 且有画面时停靠画面底边内侧;收起后只剩一枚圆钮
-Footer       居中版权行(家族原样:text-xs text-ink-3),芯片胶囊悬浮其上
+  ├─ 无信号态   serif 标题 + 接线图(WiringDiagram)+ 连接纸片按钮
+  ├─ 等待芯片   stream 已接但无尺寸时的 pending 提示
+  └─ 无 HDMI 态 3s 宽限后升级为接线指南
+Statusbar    底部页脚:居中版权行(家族原样,text-xs text-ink-3;md+ 显示,
+             移动端由 App 内 md:hidden 页脚条承担)
 ```
 
-**反馈与动作分离(已登记)**:胶囊只承载**设备回读**的反馈信息;连接动作统一收进工具栏的**设备面板**(采集卡连接与显示设置 / HID 串口 / 麦克风授权与音量,按 VIDEO · SERIAL · AUDIO 分区),冷启动/无信号时自动展开设备面板(连接门已退役)。**家族回归(已登记)**:更早的 KVM 用「左信息右元数据的 mono 状态栏」充当页脚;现改为与博客同构——居中版权行(text-xs 12px 地板)+ 状态信息上浮为可收起的芯片胶囊,不再占用页脚层。
+**反馈与动作分离(已登记)**:设备**回读**的反馈信息收进导航的状态信息菜单;连接动作统一收进工具栏的**设备面板**(采集卡连接与显示设置 / HID 串口 / 麦克风授权与音量),冷启动/无信号时自动展开设备面板(连接门已退役)。更早版本的「底部芯片胶囊」与「画面内 REC 徽章」已分别迁往导航与导航 REC 条(851cd67 / 9581589),`pictureRectAtom` 发布链路随之退役(2026-11 审计移除)。
 
 ### 空间与层级 guideline(家族 §6 的 app 版)
 
@@ -61,14 +62,14 @@ Footer       居中版权行(家族原样:text-xs text-ink-3),芯片胶囊悬浮
 
 | 片段 | 用途 |
 | --- | --- |
-| `PANEL_ROW` | 面板行:label 左控制右,LIST_ROW 的紧凑兄弟 |
+| `PANEL_ROW` / `PANEL_COL` | 面板行:label 左控制右(宽控件用列变体),LIST_ROW 的紧凑兄弟 |
 | `SEGMENT` / `SEGMENT_ITEM_ON/OFF` | 分段控件:surface-2 轨道 + accent-strong 选中胶囊(家族 tab 语言) |
+| `PANEL_STATE_CHIP` | 面板内状态芯片:与 h-8 行按钮同刻度 |
 | `TOOLBAR` / `TOOLBAR_DIVIDER` | 悬浮玻璃胶囊工具栏(bg-bg/80 + backdrop-blur-md,与导航同材质) |
-| `STATUS_CHIP` | 状态栏/浮层芯片:h-6 mono 圆角描边 |
-| `KEY` | 虚拟键盘按键(皮肤在 `.kvm-key`) |
-| `MODAL_SCRIM` / `MODAL_PANEL` | 家族模态:ink/30 背板 + 淡入淡出 + 240ms 卸载兜底 |
-| `SHEET` | 底部抽屉(虚拟键盘) |
-| `GHOST_TEXT` | GHOST_DATE 的内容无关版(无信号水印) |
+| `STATUS_CHIP` | 状态信息菜单芯片:h-6 mono 圆角描边 |
+| `MODAL_SCRIM` | 家族模态背板(ink/30 + blur;面板由 Modal 用 CARD 自组,淡入淡出 + 240ms 卸载兜底) |
+
+> 2026-11 审计清理:KEY(键帽直接用 `.kvm-key` 组合)、MODAL_PANEL、SHEET(浮窗/抽屉自组 shell)、GHOST_TEXT(无信号幽灵水印已随 2ab66d0 退役)四个无消费片段删除;家族段的 CARD_HOVER/STRIP_PAPER/ALERT_DANGER/SECTION 是**家族同步保留**(zjblog 两向同步,本应用暂无消费者,勿删)。
 
 ## 4. 纸感物理在 app 里的落点
 
@@ -85,10 +86,12 @@ Footer       居中版权行(家族原样:text-xs text-ink-3),芯片胶囊悬浮
 
 ## 6. 可访问性
 
-- 工具栏 `role="toolbar"`,每个图标钮必带 `aria-label` + `title`;分段控件 `role="radiogroup"`;开关 `role="switch"` + `aria-checked`
-- LED 芯片 `role="img"` + `aria-label="CAPS on/off"`;REC 计时 `aria-live="polite"`
+- 工具栏 `role="toolbar"`,每个图标钮必带 `aria-label` + `title`;面板/弹层触发钮带 `aria-expanded`(IconButton `expanded` prop);分段控件 `role="radiogroup"`;开关 `role="switch"` + `aria-checked`
+- LED/HID 芯片 `role="img"` + `aria-label` 形如 `CAPS 开/关`(状态词走 `common.on/off` 词库键);REC 计时数字 `aria-hidden`,录制**开始/停止**事件由常驻 sr-only `role="status"` 播报(不逐秒播报)
+- 弹层焦点契约(2026-11 起):Modal 打开聚焦面板、Tab 圈定、关闭归还触发钮;Popover 关闭归还触发钮(外部 pointerdown 关闭除外 —— 焦点留在用户点击处);Dropdown 列表 ArrowUp/Down/Home/End + 打开聚焦选中项(APG listbox)
 - 焦点环 2px accent(家族 base.css 原样);触控目标按 §2 guideline(基线 36–40px,芯片层 24px 注册地板);`pointer:coarse` 下输入控件 16px 防 iOS 缩放
-- 跳转链接直达 `#video`;弹层 Esc 可退、外部 pointerdown 关闭
+- 跳转链接直达 `#video`(文案走词库);弹层 Esc 可退、外部 pointerdown 关闭;虚拟键盘 Esc 可关 + 窗口 blur 释放按住的键(与物理转发同守卫)
+- 能力横幅:非 Chromium / 非安全上下文启动时导航下出现一条 `role="status"` 提示(browser.* 三键),Chromium 桌面恒不渲染 —— Lighthouse CLS 无影响
 
 ## 7. 响应式契约
 
@@ -102,9 +105,10 @@ Footer       居中版权行(家族原样:text-xs text-ink-3),芯片胶囊悬浮
 
 ## 8. 性能与 SEO 契约(家族 §15 的 KVM 版)
 
-- `pnpm audit` 门禁:Performance ≥ 90(桌面实测 100)/ A11y / BP / SEO = 100,双档位(桌面+`LH_FORM_FACTOR=mobile`)都必须通过
+- `pnpm audit` 门禁:Performance ≥ 90(实测 100)/ A11y / BP / SEO = 100,双档位(桌面+`LH_FORM_FACTOR=mobile`)都必须通过;第五类 `agentic-browsing` 98 分来自 ard-schema 的 `text/html` 非标准发现类型 —— 控制台入口**确实是** HTML 页,登记为接受 insight(§AUDIT.md),不追
 - 零 webfont、零图片资源(图标 = 内联 lucide SVG;logo = 代码生成 PNG)
-- JS 单包 360KB(114KB gzip),React 19 + jotai;首屏无阻塞 JS(CSS 唯一渲染阻塞)
+- JS 单包 ≈378KB(≈119KB gzip),React 19 + jotai;首屏无阻塞 JS(CSS 唯一渲染阻塞)
+- 1Hz 遥测不重渲染舞台树:`useVideoStats` 隔离在 `VideoStatsBridge` 子组件(2026-11);Popover `onClose` 用 `useCallback` 固定,避免每秒重装 document 监听
 - Agentic 友好:`robots.txt` / `llms.txt` / `.well-known/ard.json`(家族 agentic browsing 立场的延续)
 
 ## 9. 双向同步清单

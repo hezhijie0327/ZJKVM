@@ -20,7 +20,7 @@
 
 ```bash
 pnpm install        # 安装依赖(包管理器:pnpm)
-pnpm dev            # 开发服务器 http://localhost:3010(无硬件?点「演示模式」)
+pnpm dev            # 开发服务器 http://localhost:3010(无硬件?在「关于」里点「试用演示模式」)
 pnpm build          # tsc --noEmit + vite build(两者都必须通过)
 pnpm lint           # Biome(格式化 + Lint)
 pnpm audit          # Lighthouse 门禁(先 build;LH_FORM_FACTOR=mobile 跑移动端)
@@ -46,13 +46,13 @@ ZJKVM 与 NanoKVM-USB 通过两条本机通道通信:
 
 ```
 src/
-├── main.tsx / App.tsx   # 启动引导 + 布局组合 + 设置持久化
+├── main.tsx / App.tsx   # 启动引导 + 布局组合 + 能力横幅 + 设置持久化
 ├── components/
-│   ├── stage/           # 舞台:视频 letterbox / 统计 / pictureRect 几何
+│   ├── stage/           # 舞台:视频 letterbox / 信号判定 / videoRect 几何
 │   ├── toolbar/         # 工具栏与面板(设备统一管理 / 键盘 / 鼠标)
 │   ├── input/           # 物理键盘转发 / 绝对与相对鼠标
 │   ├── keyboard/        # 虚拟键盘(皮肤在 styles/kvm.css)
-│   ├── shell/           # 导航 / 状态胶囊 / 关于
+│   ├── shell/           # 导航(含状态信息菜单)/ 页脚 / 关于
 │   └── ui/              # Button / Popover / Dropdown / Modal 等通用件
 ├── lib/
 │   ├── device/          # 字节级协议层:CH9329 帧序 + HID 键表(勿动,见 AGENTS.md)
@@ -63,6 +63,7 @@ src/
 ├── styles/              # 设计 token 与全局样式(tokens/base/behaviors 与 zjblog 逐字节同步)
 └── config/site.ts       # 站点配置
 scripts/                  # Lighthouse 双端门禁 + PWA 图标生成
+AUDIT.md                  # 审计手册(下一轮审计从 §2 起步)
 ```
 
 ## License

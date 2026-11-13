@@ -34,15 +34,19 @@ Package manager is pnpm. `pnpm-workspace.yaml` whitelists esbuild's build script
 
 - Biome: 2-space, 120 cols, double quotes, named exports only (`export default` only for `App.tsx`). Unused suppression comments are flagged — keep `biome-ignore` lines directly above the exact node.
 - i18n: all UI strings via `useI18n().t()`; wordbooks live in `lib/i18n/` — `en.ts` is the baseline and source of `TKey`, `zh.ts` mirrors it key-for-key, and `lib/i18n.tsx` holds the provider/logic (same split as zjblog). Adding a locale = new `lib/i18n/<tag>.ts` + register in `CATALOGS`. Module-scope code uses `state/t.ts`.
-- Settings persist under `zjkvm-*` localStorage keys via `lib/storage.ts`; atoms initialize from it, `App.tsx` owns the persist effects.
-- Accessibility floor: a11y Lighthouse 100 — icon buttons need aria-label, switches are `role="switch"`, decorative tape/ghost text is `aria-hidden` + `pointer-events-none`, reduced-motion must keep working.
+- Settings persist under `zjkvm-*` localStorage keys via `lib/storage.ts`; atoms initialize from it, `App.tsx` owns the persist effects — all writes go through the storage module, never raw `localStorage` with a hand-built key.
+- Accessibility floor: a11y Lighthouse 100 — icon buttons need aria-label, switches are `role="switch"`, disclosure triggers carry `aria-expanded` (IconButton `expanded`), popovers/modals move focus in and return it on close, decorative tape/ghost text is `aria-hidden` + `pointer-events-none`, reduced-motion must keep working. AUDIT.md §4.0 is the assertion list.
 - Serial connects only inside a user gesture (`navigator.serial.requestPort()`); video is the same — nothing may call `getUserMedia` without a click. The saved device id prefills the device panel, it never autoplay-connects.
+- Connect flows are re-entrancy guarded (`connectVideo` mutex, `camera.open` generation guard, demo owns the stage exclusively) — don't add a new connect path without one, and don't put side effects inside setState updaters.
 
 ## Gotchas
 
-- Web Serial / keyboard.lock / showSaveFilePicker are Chromium-desktop-only — always gate via `lib/browser.ts` capability checks, never assume.
+- Web Serial / keyboard.lock / showSaveFilePicker are Chromium-desktop-only — always gate via `lib/browser.ts` capability checks, never assume; non-Chromium/insecure origins get the `browser.*` capability banner under the nav.
 - `index.html` ships an inline theme bootstrap script (anti-FOUC); keep it in sync with `lib/theme.ts` if the storage key changes.
-- Lighthouse SEO requires `public/robots.txt`, `llms.txt`, `.well-known/ard.json` (audit falls back to index.html otherwise and fails) — keep them when changing the build.
+- Lighthouse SEO requires `public/robots.txt`, `llms.txt`, `.well-known/ard.json` (audit falls back to index.html otherwise and fails) — keep them when changing the build. Lighthouse 13's fifth category `agentic-browsing` scores 98 from the honest `text/html` ARD entry type — accepted insight, the gate checks the four categories only.
+- `videoEl.play()` can be rejected (autoplay policy) while the stream is already live — Stage retries once on the next trusted interaction; keep that kick when touching the stage.
+- HID resets ride on connect: `connection.ts` sends keyboard/mouse reports on serial open/rebind so the target machine never keeps a stuck key or button across a link drop.
+- `pnpm audit` (no `run`) is the registry security audit and errors on npmmirror — the Lighthouse gate is `pnpm run audit`. Full audit playbook: AUDIT.md.
 
 ## Git commit convention
 
