@@ -18,7 +18,7 @@ import { MousePanel } from "@/components/toolbar/panels/MousePanel";
 import { IconButton } from "@/components/ui/IconButton";
 import { Popover } from "@/components/ui/Popover";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { supportsPictureInPicture } from "@/lib/browser";
+import { supportsKeyboardLock, supportsPictureInPicture } from "@/lib/browser";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
 import { downloadBlob, StreamRecorder } from "@/lib/recorder";
@@ -55,7 +55,7 @@ export function Toolbar() {
   const deviceButtonRef = useRef<HTMLButtonElement>(null);
   const keyboardButtonRef = useRef<HTMLButtonElement>(null);
   const mouseButtonRef = useRef<HTMLButtonElement>(null);
-  const recorderRef = useRef(new StreamRecorder());
+  const recorderRef = useRef<StreamRecorder | null>(null);
   const timerRef = useRef<number | null>(null);
 
   const [dragging, setDragging] = useState(false);
@@ -66,8 +66,12 @@ export function Toolbar() {
     },
     [activePanel, setActivePanel],
   );
+  // Stable onClose: the Popover re-subscribes document listeners whenever the
+  // identity changes, and this component's parents re-render at 1 Hz.
+  const closePanel = useCallback(() => setActivePanel(null), [setActivePanel]);
 
   /* ── Drag (any pointer: mouse drag, touch drag via touch-none) ── */
+  const dragCleanupRef = useRef<(() => void) | null>(null);
   const onHandlePointerDown = (event: React.PointerEvent) => {
     event.preventDefault();
     setDragging(true);
@@ -76,6 +80,7 @@ export function Toolbar() {
     const startPos = { ...pos };
 
     const onMove = (move: PointerEvent) => {
+      // the ref exists on both desktop and mobile branches — width is real
       const width = toolbarRef.current?.offsetWidth ?? 400;
       const maxX = window.innerWidth / 2 - width / 2 - 8;
       const maxY = window.innerHeight - 120;
@@ -88,25 +93,47 @@ export function Toolbar() {
       setDragging(false);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      dragCleanupRef.current = null;
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    // A mid-drag unmount must not leave the window listeners hanging until
+    // the next pointerup.
+    dragCleanupRef.current = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
   };
+  useEffect(() => () => dragCleanupRef.current?.(), []);
 
   /* ── Recording ── */
+  const getRecorder = () => {
+    recorderRef.current ??= new StreamRecorder();
+    return recorderRef.current;
+  };
+
+  const stopRecording = useCallback(async (): Promise<void> => {
+    let recorder = recorderRef.current;
+    if (!recorder) {
+      recorder = new StreamRecorder();
+      recorderRef.current = recorder;
+    }
+    const blob = await recorder.stop();
+    setRecording(false);
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setDuration(0);
+    if (blob) {
+      downloadBlob(blob, `zjkvm-recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`);
+    }
+    pushToast(t("toast.recSaved"));
+  }, [t, setRecording, setDuration]);
+
   const toggleRecording = async () => {
     if (recording) {
-      const blob = await recorderRef.current.stop();
-      setRecording(false);
-      if (timerRef.current !== null) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      setDuration(0);
-      if (blob) {
-        downloadBlob(blob, `zjkvm-recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`);
-      }
-      pushToast(t("toast.recSaved"));
+      await stopRecording();
       return;
     }
     if (!stream) {
@@ -114,7 +141,12 @@ export function Toolbar() {
       return;
     }
     try {
-      await recorderRef.current.start(stream, () => pushToast(t("toast.recFail"), "danger"));
+      // Write errors must end the session — silently "recording" a dead
+      // stream while the timer runs is worse than stopping with a toast.
+      await getRecorder().start(stream, () => {
+        pushToast(t("toast.recFail"), "danger");
+        void stopRecording();
+      });
       setRecording(true);
       setDuration(0);
       timerRef.current = window.setInterval(() => {
@@ -125,6 +157,15 @@ export function Toolbar() {
       pushToast(t("toast.recFail"), "danger");
     }
   };
+
+  /* The stream dying while recording (dongle re-enumeration, demo stop) must
+     stop the recording too — otherwise the timer keeps running on a dead
+     track and the saved file is blank. */
+  useEffect(() => {
+    if (!stream && recording) {
+      void stopRecording();
+    }
+  }, [stream, recording, stopRecording]);
 
   useEffect(() => {
     return () => {
@@ -169,7 +210,9 @@ export function Toolbar() {
 
   /* ── Fullscreen (+ keyboard lock so Win/Cmd reach the target machine) ── */
   type KeyboardLock = { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void };
-  const keyboardApi = (navigator as Navigator & { keyboard?: KeyboardLock }).keyboard;
+  const keyboardApi = supportsKeyboardLock()
+    ? (navigator as Navigator & { keyboard: KeyboardLock }).keyboard
+    : undefined;
 
   const toggleFullscreen = async () => {
     try {
@@ -177,7 +220,10 @@ export function Toolbar() {
         keyboardApi?.unlock?.();
         await document.exitFullscreen();
       } else {
-        await toolbarRef.current?.closest(".kvm-stage")?.requestFullscreen();
+        const stage = toolbarRef.current?.closest(".kvm-stage");
+        if (!stage) return;
+        await stage.requestFullscreen();
+        // only lock OS keys once fullscreen actually took
         await keyboardApi?.lock?.(["MetaLeft", "MetaRight", "AltLeft", "AltRight"]);
       }
     } catch {
@@ -191,6 +237,7 @@ export function Toolbar() {
         ref={withAnchors ? deviceButtonRef : undefined}
         label={t("tb.devices")}
         active={activePanel === "devices"}
+        expanded={activePanel === "devices"}
         onClick={() => togglePanel("devices")}
         className="shrink-0"
       >
@@ -200,6 +247,7 @@ export function Toolbar() {
         ref={withAnchors ? keyboardButtonRef : undefined}
         label={t("tb.keyboard")}
         active={activePanel === "keyboard"}
+        expanded={activePanel === "keyboard"}
         onClick={() => togglePanel("keyboard")}
         className="shrink-0"
       >
@@ -209,6 +257,7 @@ export function Toolbar() {
         ref={withAnchors ? mouseButtonRef : undefined}
         label={t("tb.mouse")}
         active={activePanel === "mouse"}
+        expanded={activePanel === "mouse"}
         onClick={() => togglePanel("mouse")}
         className="shrink-0"
       >
@@ -219,6 +268,7 @@ export function Toolbar() {
 
       <IconButton
         label={recording ? t("rec.stop") : t("rec.start")}
+        aria-pressed={recording}
         onClick={toggleRecording}
         className={cn("shrink-0", recording && "text-danger hover:text-danger")}
       >
@@ -285,15 +335,19 @@ export function Toolbar() {
           style={{ transform: `translateY(${pos.y}px)` }}
         >
           <div
+            ref={toolbarRef}
             className={cn(
               "pointer-events-auto flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line/80 bg-bg/85 p-1 shadow-pop backdrop-blur-md select-none [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
               dragging && "cursor-grabbing",
             )}
             style={{ transform: `translateX(${pos.x}px)` }}
           >
+            {/* pointer-only affordance — dragging has no keyboard path, so it
+                stays out of the AT tree and tab order */}
             <button
               type="button"
-              aria-label="drag"
+              aria-hidden="true"
+              tabIndex={-1}
               onPointerDown={onHandlePointerDown}
               className="grid size-8 shrink-0 cursor-grab touch-none place-items-center rounded-full text-ink-3 active:text-ink"
             >
@@ -314,7 +368,6 @@ export function Toolbar() {
             {PANELS[activePanel]}
           </div>
         )}
-        {recording && <span className="sr-only" aria-live="polite" />}
       </>
     );
   }
@@ -332,9 +385,12 @@ export function Toolbar() {
         aria-label="KVM"
         aria-orientation="horizontal"
       >
+        {/* pointer-only affordance — dragging has no keyboard path, so it
+            stays out of the AT tree and tab order */}
         <button
           type="button"
-          aria-label="drag"
+          aria-hidden="true"
+          tabIndex={-1}
           onPointerDown={onHandlePointerDown}
           className={cn(
             "grid size-8 cursor-grab touch-none place-items-center rounded-full text-ink-3 hover:text-ink",
@@ -347,32 +403,21 @@ export function Toolbar() {
         {buttons(true)}
 
         {/* Panels drop below the pill */}
-        <Popover
-          open={activePanel === "devices"}
-          onClose={() => setActivePanel(null)}
-          anchorRef={deviceButtonRef}
-          className="w-80"
-        >
+        <Popover open={activePanel === "devices"} onClose={closePanel} anchorRef={deviceButtonRef} className="w-80">
           <DevicePanel />
         </Popover>
         <Popover
           open={activePanel === "keyboard"}
-          onClose={() => setActivePanel(null)}
+          onClose={closePanel}
           anchorRef={keyboardButtonRef}
           className="w-96 max-w-[calc(100vw-1.5rem)]"
         >
           <KeyboardPanel />
         </Popover>
-        <Popover
-          open={activePanel === "mouse"}
-          onClose={() => setActivePanel(null)}
-          anchorRef={mouseButtonRef}
-          className="w-80"
-        >
+        <Popover open={activePanel === "mouse"} onClose={closePanel} anchorRef={mouseButtonRef} className="w-80">
           <MousePanel />
         </Popover>
       </div>
-      {recording && <span className="sr-only" aria-live="polite" />}
     </div>
   );
 }
