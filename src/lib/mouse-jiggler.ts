@@ -27,10 +27,6 @@ class MouseJiggler {
     }
   }
 
-  getMode(): JigglerMode {
-    return this.mode;
-  }
-
   /** Feed real user movement to reset the idle window. */
   notifyMovement(): void {
     if (this.mode === "enable") {

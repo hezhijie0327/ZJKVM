@@ -105,17 +105,6 @@ export const TOOLBAR_DIVIDER = "mx-0.5 h-5 w-px bg-line";
 export const STATUS_CHIP =
   "inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-2.5 font-mono text-[11px] text-ink-2";
 
-/** Small key button on the virtual keyboard (visual base; .kvm-key carries the skin) */
-export const KEY = "kvm-key";
-
-/** Modal shell: scrim + floating paper panel (family modal language) */
+/** Modal scrim (family modal language): ink wash + blur; the panel keeps its
+ *  own CARD composition in ui/Modal.tsx. */
 export const MODAL_SCRIM = "fixed inset-0 z-100 flex items-center justify-center bg-ink/30 px-4 backdrop-blur-[2px]";
-export const MODAL_PANEL = "relative w-full overflow-hidden text-left";
-
-/** Bottom sheet (mobile panels / virtual keyboard) */
-export const SHEET = "fixed inset-x-0 bottom-0 z-90 rounded-t-2xl border-t border-line bg-surface shadow-pop";
-
-/** Ghost watermark: hollow outlined large mono text (family GHOST_DATE
- *  language, content-agnostic) — decorative, keep aria-hidden on consumers */
-export const GHOST_TEXT =
-  "hollow-text pointer-events-none absolute select-none whitespace-nowrap font-mono font-bold leading-none";

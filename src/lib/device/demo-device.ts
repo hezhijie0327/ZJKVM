@@ -17,7 +17,6 @@ export class DemoDevice implements HidLink {
 
   private leds = { num: false, caps: false, scroll: false };
   private state: DemoVideoState;
-  private lastButtons = 0;
 
   constructor(state: DemoVideoState) {
     this.state = state;
@@ -65,9 +64,6 @@ export class DemoDevice implements HidLink {
       this.state.mouseY = y / 4096;
       this.state.wheel += wheel;
       this.state.buttons = body[0] ?? 0;
-    }
-    if (this.state.buttons !== this.lastButtons) {
-      this.lastButtons = this.state.buttons;
     }
     this.state.reportCount += 1;
   }

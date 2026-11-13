@@ -36,10 +36,6 @@ export class KeyboardReport {
     return this.buildReport();
   }
 
-  getPressedKeyCodes(): string[] {
-    return [...this.pressedKeys.keys()];
-  }
-
   private buildReport(): number[] {
     const report = [this.modifier, 0, 0, 0, 0, 0, 0, 0];
     let i = 2;

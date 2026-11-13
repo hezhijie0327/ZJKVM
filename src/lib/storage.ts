@@ -69,6 +69,7 @@ export const getVideoResolution = (): Resolution | null => getJSON<Resolution>(K
 export const setVideoResolution = (r: Resolution) => set(KEYS.videoResolution, JSON.stringify(r));
 
 export const getCustomResolutions = (): Resolution[] => getJSON<Resolution[]>(KEYS.customResolutions) ?? [];
+export const setCustomResolutions = (list: Resolution[]) => set(KEYS.customResolutions, JSON.stringify(list));
 export const addCustomResolution = (r: Resolution) => {
   const list = getCustomResolutions();
   if (list.some((x) => x.width === r.width && x.height === r.height)) return;

@@ -53,10 +53,6 @@ export class MouseReportRelative {
     return [this.buttons, x, y, scroll];
   }
 
-  buildButtonReport(): number[] {
-    return this.buildReport(0, 0, 0);
-  }
-
   reset(): number[] {
     this.buttons = 0;
     return this.buildReport(0, 0, 0);
