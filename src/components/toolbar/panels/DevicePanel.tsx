@@ -106,7 +106,7 @@ export function DevicePanel() {
       width > 7680 ||
       height > 4320
     ) {
-      setCustomNote("160×120 – 7680×4320");
+      setCustomNote(t("device.resRange"));
       return;
     }
     const value = { width, height };
@@ -114,10 +114,10 @@ export function DevicePanel() {
       setCustomNote(t("video.customExists"));
       return;
     }
-    setCustoms((list) => {
-      storage.addCustomResolution(value);
-      return [...list, value];
-    });
+    // pure updater + storage outside it: StrictMode double-invokes updaters
+    // and the storage side effect must not run twice
+    storage.addCustomResolution(value);
+    setCustoms((list) => [...list, value]);
     setCustomWidth("");
     setCustomHeight("");
     setCustomNote(null);
@@ -281,14 +281,23 @@ export function DevicePanel() {
       </div>
       <div className={PANEL_COL}>
         <span className={ROW_LABEL}>{t("video.customAdd")}</span>
-        <div className="flex items-center gap-1.5">
+        <form
+          className="flex items-center gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            addCustom();
+          }}
+        >
           <input
             type="number"
             inputMode="numeric"
             aria-label={t("video.width")}
             placeholder={t("video.width")}
             value={customWidth}
-            onChange={(event) => setCustomWidth(event.target.value)}
+            onChange={(event) => {
+              setCustomWidth(event.target.value);
+              setCustomNote(null);
+            }}
             className="kvm-input w-24 text-center"
             min={160}
             max={7680}
@@ -302,21 +311,23 @@ export function DevicePanel() {
             aria-label={t("video.height")}
             placeholder={t("video.height")}
             value={customHeight}
-            onChange={(event) => setCustomHeight(event.target.value)}
+            onChange={(event) => {
+              setCustomHeight(event.target.value);
+              setCustomNote(null);
+            }}
             className="kvm-input w-24 text-center"
             min={120}
             max={4320}
           />
           <button
-            type="button"
+            type="submit"
             aria-label={t("common.add")}
             title={t("common.add")}
-            onClick={addCustom}
             className="grid size-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           >
             <Plus aria-hidden="true" className="size-4" />
           </button>
-        </div>
+        </form>
         {customNote && <p className={cn(META, "text-warning")}>{customNote}</p>}
       </div>
       <div className={PANEL_COL}>

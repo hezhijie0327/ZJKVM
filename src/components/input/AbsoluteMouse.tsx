@@ -62,23 +62,36 @@ function AbsoluteMouse() {
     screen.addEventListener("click", disableEvent);
     screen.addEventListener("contextmenu", disableEvent);
 
-    const touchHandlers =
-      window.matchMedia(`(min-width: ${TOUCH_MIN_WIDTH}px)`).matches && "ontouchstart" in window
-        ? createTouchHandlers(touchStateRef.current, {
-            wheelDirection,
-            wheelInterval,
-            getCoordinate: (event) => coordinateOf(event.clientX, event.clientY) ?? { x: 0.5, y: 0.5 },
-            handleMouseEvent: (event) => void handleMouseEvent(event),
-            disableEvent,
-          })
-        : null;
-
-    if (touchHandlers) {
-      screen.addEventListener("touchstart", touchHandlers.handleTouchStart, { passive: false });
-      screen.addEventListener("touchmove", touchHandlers.handleTouchMove, { passive: false });
-      screen.addEventListener("touchend", touchHandlers.handleTouchEnd);
-      screen.addEventListener("touchcancel", touchHandlers.handleTouchCancel);
-    }
+    // Touch gestures must survive viewport changes (rotation, split view) —
+    // a one-shot matchMedia read would strand the handlers on the wrong side
+    // of the threshold forever.
+    const touchMq = window.matchMedia(`(min-width: ${TOUCH_MIN_WIDTH}px)`);
+    let touchHandlers: ReturnType<typeof createTouchHandlers> | null = null;
+    const evalTouchHandlers = () => {
+      const wanted = touchMq.matches && "ontouchstart" in window;
+      if (wanted && !touchHandlers) {
+        touchHandlers = createTouchHandlers(touchStateRef.current, {
+          wheelDirection,
+          wheelInterval,
+          getCoordinate: (event) => coordinateOf(event.clientX, event.clientY) ?? { x: 0.5, y: 0.5 },
+          handleMouseEvent: (event) => void handleMouseEvent(event),
+          disableEvent,
+        });
+        screen.addEventListener("touchstart", touchHandlers.handleTouchStart, { passive: false });
+        screen.addEventListener("touchmove", touchHandlers.handleTouchMove, { passive: false });
+        screen.addEventListener("touchend", touchHandlers.handleTouchEnd);
+        screen.addEventListener("touchcancel", touchHandlers.handleTouchCancel);
+      } else if (!wanted && touchHandlers) {
+        screen.removeEventListener("touchstart", touchHandlers.handleTouchStart);
+        screen.removeEventListener("touchmove", touchHandlers.handleTouchMove);
+        screen.removeEventListener("touchend", touchHandlers.handleTouchEnd);
+        screen.removeEventListener("touchcancel", touchHandlers.handleTouchCancel);
+        touchHandlers.cleanup();
+        touchHandlers = null;
+      }
+    };
+    evalTouchHandlers();
+    touchMq.addEventListener("change", evalTouchHandlers);
 
     function coordinateOf(clientX: number, clientY: number): { x: number; y: number } | null {
       const domRect = screen!.getBoundingClientRect();
@@ -122,6 +135,7 @@ function AbsoluteMouse() {
       screen.removeEventListener("wheel", handleWheel);
       screen.removeEventListener("click", disableEvent);
       screen.removeEventListener("contextmenu", disableEvent);
+      touchMq.removeEventListener("change", evalTouchHandlers);
       if (touchHandlers) {
         screen.removeEventListener("touchstart", touchHandlers.handleTouchStart);
         screen.removeEventListener("touchmove", touchHandlers.handleTouchMove);
