@@ -7,7 +7,6 @@ import { useI18n } from "@/lib/i18n";
 import { EYEBROW, META, MONO_CHIP, PAPER_STRIP, STRIP_PRIMARY, TAPE } from "@/lib/styles";
 import { demoModeAtom, firmwareAtom, serialStateAtom } from "@/state/atoms";
 import { startDemo, stopDemoMode } from "@/state/connection";
-import { pushToast } from "@/state/toast";
 
 /** About dialog: product introduction, live capability report, demo entry. */
 export function AboutModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -20,8 +19,9 @@ export function AboutModal({ open, onClose }: { open: boolean; onClose: () => vo
     if (demo) {
       stopDemoMode();
     } else {
+      // startDemo already announces itself (demo.banner toast) — no second
+      // toast on top of it.
       startDemo();
-      pushToast(t("toast.demoStarted"));
       // Demo is the show — hand the stage over immediately.
       onClose();
     }

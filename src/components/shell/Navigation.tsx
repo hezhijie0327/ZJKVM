@@ -1,12 +1,12 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { Activity, Info, Languages, Moon, Sun, SunMoon } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { IconButton } from "@/components/ui/IconButton";
 import { Popover } from "@/components/ui/Popover";
 import { cn } from "@/lib/cn";
 import { type Lang, useI18n } from "@/lib/i18n";
 import { LIST_ROW, STATUS_CHIP } from "@/lib/styles";
-import { nextThemeStyle, readThemeStyle, setThemeStyle } from "@/lib/theme";
+import { nextThemeStyle, readThemeStyle, setThemeStyle, type ThemeStyle } from "@/lib/theme";
 import {
   aboutOpenAtom,
   demoModeAtom,
@@ -28,12 +28,13 @@ function formatDuration(totalSeconds: number): string {
 }
 
 function LedChip({ label, on, hint }: { label: string; on: boolean; hint: string }) {
+  const { t } = useI18n();
   return (
     <span
       role="img"
       className={cn(STATUS_CHIP, on && "border-accent text-accent")}
       title={hint}
-      aria-label={`${label} ${on ? "on" : "off"}`}
+      aria-label={`${label} ${on ? t("common.on") : t("common.off")}`}
     >
       <span aria-hidden="true" className={cn("size-1.5 rounded-full", on ? "bg-accent-strong" : "bg-line")} />
       {label}
@@ -69,9 +70,18 @@ export function Navigation() {
   const duration = useAtomValue(recordingDurationAtom);
   const [infoOpen, setInfoOpen] = useState(false);
   const infoAnchorRef = useRef<HTMLButtonElement>(null);
+  // Theme style in state: the label/icon must reflect the mode right after a
+  // cycle (the DOM attribute alone does not re-render the React tree).
+  const [themeStyle, setThemeStyleState] = useState<ThemeStyle>(() => readThemeStyle());
+  // Stable popover closes: this bar re-renders at 1 Hz while stats/recording
+  // tick, and the Popover re-subscribes its document listeners per identity.
+  const closeLang = useCallback(() => setLangOpen(false), []);
+  const closeInfo = useCallback(() => setInfoOpen(false), []);
 
   const cycleTheme = () => {
-    setThemeStyle(nextThemeStyle(readThemeStyle()));
+    const next = nextThemeStyle(themeStyle);
+    setThemeStyle(next);
+    setThemeStyleState(next);
   };
 
   const langOptions: { value: Lang; label: string }[] = [
@@ -91,13 +101,13 @@ export function Navigation() {
 
         <div className="flex shrink-0 items-center gap-0.5">
           {recording && (
-            <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} aria-live="polite" title={t("rec.stop")}>
+            <span className={cn(STATUS_CHIP, "border-danger/60 text-danger")} title={t("rec.stop")}>
               <span aria-hidden="true" className="kvm-rec-dot size-1.5 rounded-full bg-danger" />
-              REC {formatDuration(duration)}
+              REC <span aria-hidden="true">{formatDuration(duration)}</span>
             </span>
           )}
 
-          <IconButton label={`${t("nav.theme")} (${readThemeStyle()})`} onClick={cycleTheme}>
+          <IconButton label={`${t("nav.theme")} (${t(`theme.${themeStyle}`)})`} onClick={cycleTheme}>
             <SunMoon aria-hidden="true" className="theme-icon theme-icon-auto size-4" />
             <Sun aria-hidden="true" className="theme-icon theme-icon-light size-4" />
             <Moon aria-hidden="true" className="theme-icon theme-icon-dark size-4" />
@@ -108,13 +118,14 @@ export function Navigation() {
               ref={langAnchorRef}
               label={t("nav.lang")}
               active={langOpen}
+              expanded={langOpen}
               onClick={() => setLangOpen((open) => !open)}
             >
               <Languages aria-hidden="true" className="size-4" />
             </IconButton>
             <Popover
               open={langOpen}
-              onClose={() => setLangOpen(false)}
+              onClose={closeLang}
               side="bottom"
               align="end"
               anchorRef={langAnchorRef}
@@ -147,13 +158,14 @@ export function Navigation() {
               ref={infoAnchorRef}
               label={t("status.info")}
               active={infoOpen}
+              expanded={infoOpen}
               onClick={() => setInfoOpen((open) => !open)}
             >
               <Activity aria-hidden="true" className="size-4" />
             </IconButton>
             <Popover
               open={infoOpen}
-              onClose={() => setInfoOpen(false)}
+              onClose={closeInfo}
               side="bottom"
               align="end"
               anchorRef={infoAnchorRef}
@@ -164,18 +176,23 @@ export function Navigation() {
                   STATUS
                 </p>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {stream && (
-                    <>
-                      <span className={STATUS_CHIP} title={t("status.statsHint")}>
-                        {stats.width > 0 ? `${stats.width}×${stats.height}` : "—"}
-                      </span>
-                      {stats.fps !== null && stats.fps > 0 && (
+                  {stream &&
+                    (stats.width > 0 ? (
+                      <>
                         <span className={STATUS_CHIP} title={t("status.statsHint")}>
-                          {stats.fps} fps
+                          {stats.width}×{stats.height}
                         </span>
-                      )}
-                    </>
-                  )}
+                        {stats.fps !== null && stats.fps > 0 && (
+                          <span className={STATUS_CHIP} title={t("status.statsHint")}>
+                            {stats.fps} fps
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className={STATUS_CHIP} title={t("status.statsHint")}>
+                        {t("stage.noHdmi")}
+                      </span>
+                    ))}
                   {demo && (
                     <button
                       type="button"
@@ -190,7 +207,7 @@ export function Navigation() {
                   {usb !== null && (
                     <span
                       role="img"
-                      aria-label={`${t("status.hid")} ${usb ? "on" : "off"}`}
+                      aria-label={`${t("status.hid")} ${usb ? t("common.on") : t("common.off")}`}
                       className={cn(STATUS_CHIP, usb ? "border-ok/60 text-ok" : "border-warning/60 text-warning")}
                       title={t("status.hidHint")}
                     >
@@ -210,6 +227,11 @@ export function Navigation() {
           </IconButton>
         </div>
       </nav>
+      {/* Recording transitions announced once — the visible REC chip keeps its
+          timer silent (aria-hidden) so screen readers get events, not ticks. */}
+      <span className="sr-only" role="status">
+        {recording ? t("rec.live") : ""}
+      </span>
     </header>
   );
 }
