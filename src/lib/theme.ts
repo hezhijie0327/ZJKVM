@@ -62,12 +62,15 @@ export function applyThemeStyle(style: ThemeStyle) {
   syncThemeColorMeta(dark);
 }
 
-export function watchSystemTheme() {
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+export function watchSystemTheme(): () => void {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => {
     if (readThemeStyle() === "auto") {
       applyThemeStyle("auto");
     }
-  });
+  };
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
 }
 
 /** Cycle auto → light → dark → auto */

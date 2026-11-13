@@ -9,6 +9,8 @@ import { Statusbar } from "@/components/shell/Statusbar";
 import { Stage } from "@/components/stage/Stage";
 import { Toasts } from "@/components/ui/Toasts";
 import { siteConfig } from "@/config/site";
+import { isSecureContext, supportsMediaDevices, supportsSerial } from "@/lib/browser";
+import { useI18n } from "@/lib/i18n";
 import { mouseJiggler } from "@/lib/mouse-jiggler";
 import * as storage from "@/lib/storage";
 import { watchSystemTheme } from "@/lib/theme";
@@ -31,6 +33,7 @@ import {
 import { checkCamera, checkMic, watchVideoHotplug } from "@/state/connection";
 
 export default function App() {
+  const { t } = useI18n();
   const aboutOpen = useAtomValue(aboutOpenAtom);
   const setAboutOpen = useSetAtom(aboutOpenAtom);
 
@@ -39,11 +42,14 @@ export default function App() {
 
   /* Boot: theme watching, device lists + hotplug, permission probes */
   useEffect(() => {
-    watchSystemTheme();
+    const unwatchTheme = watchSystemTheme();
     const unwatch = watchVideoHotplug();
     void checkMic();
     void checkCamera();
-    return unwatch;
+    return () => {
+      unwatchTheme();
+      unwatch();
+    };
   }, []);
 
   /* Jiggler mode follows the atom (also on boot) and persists with the
@@ -70,13 +76,7 @@ export default function App() {
 
   useEffect(() => storage.setVideoDeviceId(videoDeviceId), [videoDeviceId]);
   useEffect(() => storage.setVideoResolution(resolution), [resolution]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("zjkvm-custom-resolutions", JSON.stringify(customResolutions));
-    } catch {
-      // ignore
-    }
-  }, [customResolutions]);
+  useEffect(() => storage.setCustomResolutions(customResolutions), [customResolutions]);
   useEffect(() => storage.setScaleMode(scaleMode), [scaleMode]);
   useEffect(() => storage.setVideoRotation(rotation), [rotation]);
   useEffect(() => storage.setMouseStyle(mouseStyle), [mouseStyle]);
@@ -96,10 +96,11 @@ export default function App() {
         href="#video"
         className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-100 focus:rounded-full focus:bg-accent-strong focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-contrast"
       >
-        Video
+        {t("nav.skipVideo")}
       </a>
 
       <Navigation />
+      <CapabilityBanner />
 
       <Stage />
 
@@ -119,6 +120,23 @@ export default function App() {
 
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <Toasts />
+    </div>
+  );
+}
+
+/** Honest capability notice: the KVM stack (serial injection, capture-card
+ *  video, keyboard lock) is Chromium-desktop on a secure context. Browsers
+ *  without it used to render silently dead buttons — say it up front. */
+function CapabilityBanner() {
+  const { t } = useI18n();
+  const missing: string[] = [];
+  if (!isSecureContext()) missing.push(t("browser.secureMissing"));
+  if (!supportsSerial()) missing.push(t("browser.serialMissing"));
+  if (!supportsMediaDevices()) missing.push(t("browser.mediaMissing"));
+  if (missing.length === 0) return null;
+  return (
+    <div role="status" className="border-b border-warning/40 bg-warning/10 px-4 py-2 text-center text-xs text-ink-2">
+      {missing.join(" · ")}
     </div>
   );
 }

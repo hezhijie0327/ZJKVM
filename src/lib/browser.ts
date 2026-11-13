@@ -15,10 +15,6 @@ export function getOperatingSystem(): OperatingSystem {
   return "Unknown";
 }
 
-export function isTouchDevice(): boolean {
-  return window.matchMedia("(pointer: coarse)").matches;
-}
-
 /** Web Serial (the HID injection channel) — Chromium desktop only. */
 export function supportsSerial(): boolean {
   return typeof navigator !== "undefined" && "serial" in navigator;
