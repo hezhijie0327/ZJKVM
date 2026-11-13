@@ -11,12 +11,18 @@ class Camera {
   height = 1080;
   audioId = "";
   stream: MediaStream | null = null;
+  /** In-flight generation guard: overlapping opens (double click + racing
+   *  track-loss retry) must not leak the loser's getUserMedia tracks. */
+  private openSeq = 0;
+  /** Set when the last open wanted audio but had to fall back to video-only. */
+  audioDegraded = false;
 
   async open(id: string, width: number, height: number, audioId?: string) {
     if (!id && !this.id) {
       return;
     }
 
+    const seq = ++this.openSeq;
     this.close();
 
     const video: MediaTrackConstraints & { resizeMode?: string } = {
@@ -44,11 +50,26 @@ class Camera {
     this.height = height;
     if (audioId) this.audioId = audioId;
 
+    let stream: MediaStream;
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ video, audio });
+      stream = await navigator.mediaDevices.getUserMedia({ video, audio });
+      this.audioDegraded = false;
     } catch {
-      this.stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      // The paired audio track failing must not kill the video — but the
+      // user deserves to know why there is no sound.
+      stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      this.audioDegraded = audio !== false;
     }
+
+    // A newer open superseded this one — discard the stale result and stop
+    // its tracks so they never leak.
+    if (seq !== this.openSeq) {
+      stream.getTracks().forEach((track) => {
+        track.stop();
+      });
+      return;
+    }
+    this.stream = stream;
   }
 
   async updateResolution(width: number, height: number) {
@@ -56,6 +77,7 @@ class Camera {
   }
 
   close(): void {
+    this.openSeq += 1;
     if (this.stream) {
       this.stream.getTracks().forEach((track) => {
         track.stop();
@@ -66,10 +88,6 @@ class Camera {
 
   getStream(): MediaStream | null {
     return this.stream;
-  }
-
-  hasAudio(): boolean {
-    return Boolean(this.stream?.getAudioTracks().length);
   }
 }
 

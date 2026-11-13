@@ -3,10 +3,12 @@
  *  so both UI components and effects can drive them. */
 
 import { getDefaultStore } from "jotai";
-import { getOperatingSystem, supportsSerial } from "@/lib/browser";
+import { supportsSerial } from "@/lib/browser";
 import { DemoDevice } from "@/lib/device/demo-device";
 import { attachDebugHook, createDemoStream } from "@/lib/device/demo-video";
 import { type HidLink, SerialDevice, setActiveLink } from "@/lib/device/device";
+import { KeyboardReport } from "@/lib/device/keyboard-report";
+import { MOUSE_MARKER, MouseAbsoluteReport, MouseReportRelative } from "@/lib/device/mouse";
 import {
   camera,
   ensureCameraPermission,
@@ -115,6 +117,11 @@ export async function grantMic(): Promise<boolean> {
  *  refreshed on every connect — audio inputs are also anonymous until the
  *  mic grant, so a stale map would silently drop the capture card's audio. */
 export async function connectVideo(deviceId?: string): Promise<boolean> {
+  // Re-entrancy guard: a double click or a racing track-loss retry would
+  // otherwise run two getUserMedia flows against one camera.
+  if (store.get(videoStateAtom) === "connecting") return false;
+  // The demo owns the stage exclusively — starting real video hands it over.
+  if (store.get(demoModeAtom)) stopDemo();
   store.set(videoStateAtom, "connecting");
   await refreshVideoDevices();
 
@@ -149,6 +156,10 @@ export async function connectVideo(deviceId?: string): Promise<boolean> {
     store.set(videoStateAtom, "connected");
     store.set(videoDeviceIdAtom, resolved);
     store.set(cameraGrantedAtom, true);
+    // The paired audio track fell back to video-only — say so once.
+    if (camera.audioDegraded) {
+      pushToast(t("audio.noAudio"));
+    }
     return true;
   } catch (error) {
     store.set(videoStateAtom, "disconnected");
@@ -192,6 +203,7 @@ export async function openSerial(): Promise<boolean> {
     store.set(serialStateAtom, "connected");
     pushToast(t("toast.connected"));
     startLedPolling();
+    await resetTargetReports(device);
     return true;
   } catch (error) {
     if (error instanceof DOMException && error.name === "NotFoundError") {
@@ -202,6 +214,20 @@ export async function openSerial(): Promise<boolean> {
     store.set(serialStateAtom, "disconnected");
     void error;
     return false;
+  }
+}
+
+/** Clear any held keyboard modifiers / mouse buttons the CH9329 may still be
+ *  reporting after a fresh open (the dongle can hold the last report across
+ *  a re-enumeration, and a link drop mid-click would otherwise leave the
+ *  button pressed on the target machine forever). */
+async function resetTargetReports(link: HidLink): Promise<void> {
+  try {
+    await link.sendKeyboardData(new KeyboardReport().reset());
+    await link.sendMouseData([MOUSE_MARKER.relative, ...new MouseReportRelative().reset()]);
+    await link.sendMouseData([MOUSE_MARKER.absolute, ...new MouseAbsoluteReport().reset()]);
+  } catch {
+    // the write path just opened — a failure here is the next poll's problem
   }
 }
 
@@ -273,12 +299,21 @@ async function rebindSerial(port: SerialPort | null): Promise<void> {
     store.set(serialStateAtom, "connected");
     pushToast(t("toast.serialReconnected"));
     startLedPolling();
+    await resetTargetReports(device);
   } catch {
     store.set(serialStateAtom, "disconnected");
+    // A silent failure here reads as a dead chip — say it once (the rebind
+    // burst limiter in onSerialLost owns the repeated-failure case).
+    if (!rebindToastAt || Date.now() - rebindToastAt > 10_000) {
+      rebindToastAt = Date.now();
+      pushToast(t("toast.serialFail"), "danger");
+    }
   } finally {
     rebinding = false;
   }
 }
+
+let rebindToastAt = 0;
 
 /** Demo mode: synthetic capture card + virtual HID device. Takes over the
  *  stage: the real camera is released — the demo is the show, its light
@@ -403,8 +438,4 @@ export function watchVideoHotplug(): () => void {
     unwatchDevices?.();
     unwatchDevices = null;
   };
-}
-
-export function isMacHost(): boolean {
-  return getOperatingSystem() === "macOS";
 }
