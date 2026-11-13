@@ -2,7 +2,6 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useVideoStats } from "@/components/stage/useVideoStats";
-import { computeVideoRect } from "@/components/stage/videoRect";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { cn } from "@/lib/cn";
 import { useI18n } from "@/lib/i18n";
@@ -11,7 +10,6 @@ import {
   activePanelAtom,
   mouseStyleAtom,
   mutedAtom,
-  pictureRectAtom,
   rotationAtom,
   scaleModeAtom,
   videoStatsAtom,
@@ -32,21 +30,25 @@ export function Stage() {
   const mouseStyle = useAtomValue(mouseStyleAtom);
   const volume = useAtomValue(volumeAtom);
   const muted = useAtomValue(mutedAtom);
-  const setStats = useSetAtom(videoStatsAtom);
-  const setPictureRect = useSetAtom(pictureRectAtom);
   const setActivePanel = useSetAtom(activePanelAtom);
 
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
-  const stats = useVideoStats(videoEl);
-
-  useEffect(() => {
-    setStats(stats);
-  }, [stats, setStats]);
 
   useEffect(() => {
     if (videoEl && stream && videoEl.srcObject !== stream) {
       videoEl.srcObject = stream;
-      videoEl.play().catch(() => {});
+      videoEl.play().catch(() => {
+        // Autoplay-policy rejection (automation contexts, exotic restores):
+        // the stream is live but frozen at frame 0 with a "live" verdict —
+        // worse than a failed connect. One retry on the next real user
+        // interaction (a trusted click/keypress always carries activation);
+        // stale {once} listeners are harmless no-ops after recovery.
+        const kick = () => {
+          void videoEl.play().catch(() => {});
+        };
+        window.addEventListener("pointerdown", kick, { once: true });
+        window.addEventListener("keydown", kick, { once: true });
+      });
     }
   }, [videoEl, stream]);
 
@@ -117,7 +119,17 @@ export function Stage() {
     };
     videoEl?.addEventListener("loadedmetadata", onMeta);
     videoEl?.addEventListener("resize", onMeta);
-    const timer = window.setInterval(judge, 3000);
+    // The poll is a grace fallback, not a monitor: once the source judged
+    // live it stops (a transient re-buffer on a live picture must not flip
+    // the stage to "silent" three seconds later).
+    const timer = window.setInterval(() => {
+      if (videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0) {
+        setSignal("live");
+        window.clearInterval(timer);
+      } else {
+        judge();
+      }
+    }, 3000);
     const timer2 = window.setTimeout(judge, 3000);
     return () => {
       videoEl?.removeEventListener("loadedmetadata", onMeta);
@@ -130,37 +142,6 @@ export function Stage() {
   const transform = rotation === 0 ? undefined : `rotate(${rotation}deg)`;
   const zoom = scale === "auto" ? undefined : `scale(${scale})`;
 
-  /* In-picture badge anchoring: the video letterboxes inside the stage, so
-     the badges ride the rendered content rect (videoRect math) instead of the
-     stage corners. The observer only re-renders on box changes — the rect
-     itself is derived from the live element each pass. */
-  const [stageBox, setStageBox] = useState<{ clientWidth: number; clientHeight: number } | null>(null);
-  useEffect(() => {
-    if (!videoEl) return;
-    const ro = new ResizeObserver(() =>
-      setStageBox({ clientWidth: videoEl.clientWidth, clientHeight: videoEl.clientHeight }),
-    );
-    ro.observe(videoEl);
-    return () => ro.disconnect();
-  }, [videoEl]);
-  const pictureRect = videoEl && stream ? computeVideoRect(videoEl, stageBox ?? videoEl, rotation, scale) : null;
-
-  /* Publish the picture rect in viewport coordinates for floating layers
-     (status chips pill). Rendered content is always centered on the element
-     (computeVideoRect centers, transforms scale/rotate about the center), so
-     the visual rect is the element's center box with dims swapped on 90/270. */
-  useEffect(() => {
-    if (!videoEl || !stream || !pictureRect) {
-      setPictureRect(null);
-      return;
-    }
-    const vr = videoEl.getBoundingClientRect();
-    const rotated = rotation === 90 || rotation === 270;
-    const w = rotated ? pictureRect.height : pictureRect.width;
-    const h = rotated ? pictureRect.width : pictureRect.height;
-    setPictureRect({ x: vr.x + vr.width / 2 - w / 2, y: vr.y + vr.height / 2 - h / 2, w, h });
-  }, [videoEl, stream, pictureRect, rotation, setPictureRect]);
-
   return (
     <main className="kvm-stage relative min-h-0 flex-1 overflow-hidden">
       {/* biome-ignore lint/a11y/useMediaCaption: live capture stream — there is no caption track */}
@@ -170,9 +151,14 @@ export function Stage() {
         autoPlay
         playsInline
         disablePictureInPicture={false}
+        aria-label={t("stage.title")}
         className={cn("kvm-stage-video absolute inset-0 size-full object-contain", !stream && "invisible", mouseStyle)}
         style={{ transform: [transform, zoom].filter(Boolean).join(" ") || undefined }}
       />
+
+      {/* Stats live in their own subscriber so the 1 Hz readout never
+          re-renders the stage tree. */}
+      <VideoStatsBridge videoEl={videoEl} />
 
       {stream && signal === "pending" && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
@@ -199,6 +185,17 @@ export function Stage() {
       <Toolbar />
     </main>
   );
+}
+
+/** Publishes the 1 Hz fps/size readout into the global atom consumed by the
+ *  navigation info menu. Isolated so the whole Stage does not re-render. */
+function VideoStatsBridge({ videoEl }: { videoEl: HTMLVideoElement | null }) {
+  const setStats = useSetAtom(videoStatsAtom);
+  const stats = useVideoStats(videoEl);
+  useEffect(() => {
+    setStats(stats);
+  }, [stats, setStats]);
+  return null;
 }
 
 function NoSignal({ onConnect }: { onConnect: () => void }) {
