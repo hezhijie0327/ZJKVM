@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
-import { CARD } from "@/lib/styles";
+import { CARD, MODAL_SCRIM } from "@/lib/styles";
 
 export interface ModalProps {
   open: boolean;
@@ -13,12 +13,18 @@ export interface ModalProps {
   children: ReactNode;
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /** Family modal: ink scrim + blur, paper panel floating up, 240 ms exit
- *  animation with timeout fallback (DESIGN.md animation contract). */
+ *  animation with timeout fallback (DESIGN.md animation contract). Focus is
+ *  moved into the dialog on open, kept inside by a Tab trap, and returned to
+ *  the trigger on close. */
 export function Modal({ open, onClose, dismissible = true, label, className, children }: ModalProps) {
   const [render, setRender] = useState(open);
   const [closing, setClosing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: exit animation timing
   useEffect(() => {
@@ -48,14 +54,46 @@ export function Modal({ open, onClose, dismissible = true, label, className, chi
     return () => document.removeEventListener("keydown", onKey, true);
   }, [render, dismissible, onClose]);
 
+  /* Focus contract: remember the trigger, focus the panel, keep Tab inside,
+     hand focus back when the dialog goes away. */
+  useEffect(() => {
+    if (!render) return;
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+    return () => returnFocusRef.current?.focus?.();
+  }, [render]);
+
+  useEffect(() => {
+    if (!render) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !panel.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [render]);
+
   if (!render) return null;
 
   return createPortal(
     <div
-      className={cn(
-        "fixed inset-0 z-100 flex items-center justify-center bg-ink/30 px-4 py-6 backdrop-blur-[2px]",
-        closing ? "animate-fade-out" : "animate-fade-in",
-      )}
+      className={cn(MODAL_SCRIM, "py-6", closing ? "animate-fade-out" : "animate-fade-in")}
       role="presentation"
       onMouseDown={(event) => {
         if (dismissible && onClose && event.target === event.currentTarget) {
@@ -68,9 +106,10 @@ export function Modal({ open, onClose, dismissible = true, label, className, chi
         role="dialog"
         aria-modal="true"
         aria-label={label}
+        tabIndex={-1}
         className={cn(
           CARD,
-          "shadow-pop",
+          "shadow-pop outline-none",
           "max-h-full w-full max-w-lg overflow-y-auto",
           closing ? "animate-fade-out" : "animate-fade-up",
           className,

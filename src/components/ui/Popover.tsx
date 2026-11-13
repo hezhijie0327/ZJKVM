@@ -15,7 +15,9 @@ export interface PopoverProps {
 
 /** Anchored floating panel (CARD, fade-up). Closes on outside pointerdown and
  *  Escape. One instance per toolbar trigger; `activePanelAtom` guarantees a
- *  single open panel across the toolbar. */
+ *  single open panel across the toolbar. Focus returns to the anchor when the
+ *  popover closes (except outside-click closes — focus stays where the user
+ *  pointed, per the disclosure-popup pattern). */
 export function Popover({
   open,
   onClose,
@@ -26,6 +28,7 @@ export function Popover({
   anchorRef,
 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const skipReturnFocusRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +38,7 @@ export function Popover({
       if (panelRef.current?.contains(target) || anchorRef.current?.contains(target)) {
         return;
       }
+      skipReturnFocusRef.current = true;
       onClose();
     };
     const onKey = (event: KeyboardEvent) => {
@@ -50,6 +54,21 @@ export function Popover({
       document.removeEventListener("keydown", onKey, true);
     };
   }, [open, onClose, anchorRef]);
+
+  /* Focus contract: hand focus back to the trigger when the panel goes away. */
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    if (!skipReturnFocusRef.current) {
+      anchorRef.current?.focus?.();
+    }
+    skipReturnFocusRef.current = false;
+  }, [open, anchorRef]);
 
   if (!open) return null;
 
