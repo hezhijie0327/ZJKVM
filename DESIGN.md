@@ -1,121 +1,203 @@
-# ZJKVM 设计语言 —— ZJ 家族 app 形态扩展
+# DESIGN.md — ZJKVM design language (ZJ family app-form extension)
 
-ZJKVM 是 ZJ 设计家族(参见 zjblog `DESIGN.md`)的第一个 **app 形态**成员:博客定义了家族语法,这里验证它在实时控制界面上的扩展。家族六原则不变(暖纸墨金、内容优先、纸感物理、零 webfont、快、克制),本文只记录 KVM 专属的扩展与偏差,全部已登记。
+ZJKVM is the first **app-form** member of the ZJ design family (see zjblog
+`DESIGN.md`): the blog defines the family syntax; this document validates its
+extension to a real-time control interface. The six family principles are
+unchanged (warm-paper / ink / amber-gold, content first, paper physics, zero
+webfont, fast, restraint); this document records only KVM-specific extensions and
+deviations, all registered.
 
-## 1. Token:家族原样继承,零改动
+## 1. Tokens: inherited from the family verbatim, zero changes
 
-`src/styles/tokens.css` 与 zjblog **逐字节一致**(拷贝即用):19 个 `@property` 注册的颜色 token、两级暖阴影、三轨道系统字体、5 个 keyframes。KVM 没有新增任何颜色 token —— 状态语义全部落在既有 token 上:
+`src/styles/tokens.css` is **byte-identical** to zjblog (copy and use): 19
+`@property`-registered color tokens, two levels of warm shadows, three-track
+system fonts, 5 keyframes. KVM adds no new color tokens — all state semantics
+land on existing tokens:
 
-| 语义 | token |
+| Semantics | token |
 | --- | --- |
-| 连接正常 | `--ok`(状态栏 VIDEO/SERIAL/DEMO 圆点与描边) |
-| 连接中 | `--warning` |
-| 录制中 | `--danger`(脉冲点 + REC 计时) |
-| 点亮/强调 | `--accent-strong` + `--accent-contrast`(LED 灯、选中段、主按钮) |
-| 舞台底 | `--surface-2` + 横线纸纹(32px 节奏,与 blog 31px 行线同语言) |
+| Connected | `--ok` (status-bar VIDEO/SERIAL/DEMO dots and outlines) |
+| Connecting | `--warning` |
+| Recording | `--danger` (pulsing dot + REC timer) |
+| Lit / emphasis | `--accent-strong` + `--accent-contrast` (LED lights, selected segment, primary button) |
+| Stage ground | `--surface-2` + horizontal ruled-line paper texture (32px rhythm, same language as the blog's 31px ruled lines) |
 
-主题机制原样移植:`.dark` class、整页 token 交叉淡化(0.3s)+ 350ms stand-down、`<head>` 防闪脚本、theme-color 双 meta 收敛。**差异**:KVM 增加了手动三态循环(auto→light→dark,`lib/theme.ts setThemeStyle` 持久化),因为监控画面的用户需要强制亮色。
+The theme mechanism is ported verbatim: the `.dark` class, whole-page token
+cross-fade (0.3s) + 350ms stand-down, the `<head>` anti-flicker script,
+theme-color dual-meta convergence. **Difference**: KVM adds a manual three-state
+cycle (auto→light→dark, persisted by `lib/theme.ts setThemeStyle`), because users
+watching a monitor feed need to force light mode.
 
-## 2. 布局:从"页面"到"舞台"
+## 2. Layout: from "page" to "stage"
 
-博客的 Shell(导航/正文/页脚)在这里变成 **导航 / 舞台 / 状态栏**:
+The blog's Shell (navigation / body / footer) becomes **navigation / stage /
+status bar** here:
 
 ```
-Navigation   h-14 sticky 毛玻璃,serif 词标 ZJKVM + 金色句点(家族签名,原样)
-  └─ 状态信息菜单  Activity 图标钮 → popover:统计(分辨率/帧率)· 演示(可停)
-                  · HID · LED · 固件芯片;REC 计时条以危险芯片住在导航右侧
-Stage        flex-1 满幅,横线纸纹底,视频 object-contain 居中
-  ├─ 工具栏     顶部悬浮玻璃胶囊(free drag + 收起,双端一致);
-  │             设备(设备面板:采集卡/串口/音频 统一管理,连带画面设置)· 键盘 · 鼠标
-  ├─ 无信号态   serif 标题 + 接线图(WiringDiagram)+ 连接纸片按钮
-  ├─ 等待芯片   stream 已接但无尺寸时的 pending 提示
-  └─ 无 HDMI 态 3s 宽限后升级为接线指南
-Statusbar    底部页脚:居中版权行(家族原样,text-xs text-ink-3;md+ 显示,
-             移动端由 App 内 md:hidden 页脚条承担)
+Navigation   h-14 sticky frosted glass, serif wordmark ZJKVM + gold period (family signature, verbatim)
+  └─ Status info menu  Activity icon button → popover: stats (resolution/frame rate) · demo (stoppable)
+                  · HID · LED · firmware chips; the REC timer bar lives on the navigation's right as a danger chip
+Stage        flex-1 full-bleed, horizontal ruled-line paper texture ground, video object-contain centered
+  ├─ Toolbar     top floating glass pill (free drag + collapse, identical on both form factors);
+  │             Devices (device panel: capture card / serial / audio managed together, plus video settings) · Keyboard · Mouse
+  ├─ No-signal state   serif heading + wiring diagram (WiringDiagram) + paper-strip connect button
+  ├─ Waiting chip   pending hint when the stream is attached but has no dimensions
+  └─ No-HDMI state  escalates to the wiring guide after a 3s grace period
+Statusbar    bottom footer: centered copyright line (family verbatim, text-xs text-ink-3; shown at md+,
+             on mobile carried by the in-App md:hidden footer bar)
 ```
 
-**反馈与动作分离(已登记)**:设备**回读**的反馈信息收进导航的状态信息菜单;连接动作统一收进工具栏的**设备面板**(采集卡连接与显示设置 / HID 串口 / 麦克风授权与音量),冷启动/无信号时自动展开设备面板(连接门已退役)。更早版本的「底部芯片胶囊」与「画面内 REC 徽章」已分别迁往导航与导航 REC 条(851cd67 / 9581589),`pictureRectAtom` 发布链路随之退役(2026-11 审计移除)。
+**Feedback and actions separated (registered)**: device **readback** feedback is
+gathered into the navigation's status info menu; connection actions are gathered
+into the toolbar's **device panel** (capture-card connection and display settings
+/ HID serial / microphone permission and volume); the device panel auto-expands
+on cold start / no signal (the connection gate has been retired). The earlier
+"bottom chip pill" and "in-video REC badge" have moved to the navigation and the
+navigation REC bar respectively (851cd67 / 9581589), and the `pictureRectAtom`
+publication chain retired with them (removed in the 2026-11 audit).
 
-### 空间与层级 guideline(家族 §6 的 app 版)
+### Space and hierarchy guidelines (the app-form version of family §6)
 
-- **间距刻度**:Tailwind 默认 4px 基数,不自造刻度。唯一例外是**派生对位**:虚拟键盘小键盘 `mt-[2.625rem]` = 键高 36px(`.kvm-key` 2.25rem)+ 沟 6px,下移一行与主块对齐——数值随键盘几何走,不是第四种刻度;键盘行距改动时同步重算。
-- **版心**:家族 §6 的 `container mx-auto` 在 app 形态让位给**满幅舞台**(注册偏差):导航/舞台/页脚全宽;悬浮层与画面 OSD 用 12px 级贴边距(`left-3` 级),画面内容区内缩 10px。
-- **圆角词汇**:钮/胶囊 `rounded-full`、卡片/抽屉 `rounded-2xl`、小件 `rounded-lg/xl` —— 三档止步,无任意值圆角。
-- **表面层级**:`--bg`(页)→ `--surface`(卡/芯片)→ `--surface-2`(悬停/舞台底)三级止步;舞台底 = `--surface-2` + 横线纸纹(32px 节奏)是登记的表面挪用。
-- **elevation 两档**:`shadow-card`(静态)→ `shadow-pop`(悬浮/弹出),禁止裸写盒阴影。
-- **z-index 阶梯(登记,新叠加层先入座再写样式)**:
+- **Spacing scale**: Tailwind's default 4px base; no homemade scale. The only
+  exception is **derived alignment**: the virtual keyboard's numpad
+  `mt-[2.625rem]` = key height 36px (`.kvm-key` 2.25rem) + 6px gutter, shifted
+  down one row to align with the main block — the value follows the keyboard
+  geometry, it is not a fourth scale; recompute it whenever the keyboard row
+  spacing changes.
+- **Content column**: family §6's `container mx-auto` yields to the **full-bleed
+  stage** in app form (registered deviation): navigation/stage/footer are
+  full-width; floating layers and the video OSD use 12px-class edge insets
+  (`left-3` class), and the video content area insets 10px.
+- **Corner-radius vocabulary**: buttons/pills `rounded-full`, cards/drawers
+  `rounded-2xl`, small pieces `rounded-lg/xl` — three tiers, no arbitrary-value
+  radii.
+- **Surface hierarchy**: `--bg` (page) → `--surface` (cards/chips) →
+  `--surface-2` (hover/stage ground), three levels, no more; stage ground =
+  `--surface-2` + horizontal ruled-line paper texture (32px rhythm) is a
+  registered surface repurposing.
+- **Two elevation tiers**: `shadow-card` (static) → `shadow-pop`
+  (floating/popover); bare box-shadows are forbidden.
+- **z-index ladder (registered; new overlay layers take a seat before getting
+  styles)**:
 
-  | 值 | 层 | 内容 |
+  | Value | Layer | Contents |
   | --- | --- | --- |
-  | 20 | 舞台信息 | 无信号态 / HDMI 警告(画面内提示) |
-  | 30 | 画面 OSD + 键盘抽屉 | REC 徽章;虚拟键盘**刻意**压在工具栏树下(工具栏与 popover 保持可用) |
-  | 40 | 悬浮胶囊 | 工具栏树 / 芯片胶囊与演示横幅 / 视频面板 |
-  | 50 | 壳层 | 导航栏 |
-  | 90 | 弹出层 | 工具栏 popover |
-  | 100 | 模态背板 | `MODAL_SCRIM`(关于 / 粘贴预览) |
-  | 110 | toast | 全局通知 |
-- **触控目标**:基线走家族规则(按钮 `h-10`、图标钮 `size-9`、导航 `h-14`);芯片胶囊内是密集 OSD 语法,`STATUS_CHIP`(h-6)与收起/展开圆钮(size-6/7)按家族 §9 的 24px 注册地板执行,命中余量由胶囊 `py-1.5`、滚动行与相邻间距承担 —— 是对上文的精确化,不是放宽。
+  | 20 | Stage info | No-signal state / HDMI warning (in-video hints) |
+  | 30 | Video OSD + keyboard drawer | REC badge; the virtual keyboard sits **deliberately** below the toolbar tree (toolbar and popovers stay usable) |
+  | 40 | Floating pills | Toolbar tree / chip pill and demo banner / video panel |
+  | 50 | Shell | Navigation bar |
+  | 90 | Popovers | Toolbar popovers |
+  | 100 | Modal scrim | `MODAL_SCRIM` (About / paste preview) |
+  | 110 | toast | Global notifications |
+- **Touch targets**: the baseline follows the family rules (buttons `h-10`, icon
+  buttons `size-9`, navigation `h-14`); inside the chip pill it is dense OSD
+  syntax — `STATUS_CHIP` (h-6) and the collapse/expand round buttons (size-6/7)
+  run at the family §9 registered 24px floor, with hit margin carried by the
+  pill's `py-1.5`, scroll rows, and adjacent spacing — a refinement of the above,
+  not a relaxation.
 
-## 3. 片段库:`src/lib/styles.ts`
+## 3. Fragment library: `src/lib/styles.ts`
 
-家族片段(ICON_BTN / CARD / BTN_PRIMARY / PAPER_STRIP / CHIP / META / EYEBROW / TAPE…)与 zjblog 逐字同步。**ZJKVM 新增片段(家族规则②:先登记后使用)**:
+Family fragments (ICON_BTN / CARD / BTN_PRIMARY / PAPER_STRIP / CHIP / META /
+EYEBROW / TAPE…) are synced verbatim with zjblog. **New ZJKVM fragments (family
+rule ②: register before use)**:
 
-| 片段 | 用途 |
+| Fragment | Purpose |
 | --- | --- |
-| `PANEL_ROW` / `PANEL_COL` | 面板行:label 左控制右(宽控件用列变体),LIST_ROW 的紧凑兄弟 |
-| `SEGMENT` / `SEGMENT_ITEM_ON/OFF` | 分段控件:surface-2 轨道 + accent-strong 选中胶囊(家族 tab 语言) |
-| `PANEL_STATE_CHIP` | 面板内状态芯片:与 h-8 行按钮同刻度 |
-| `TOOLBAR` / `TOOLBAR_DIVIDER` | 悬浮玻璃胶囊工具栏(bg-bg/80 + backdrop-blur-md,与导航同材质) |
-| `STATUS_CHIP` | 状态信息菜单芯片:h-6 mono 圆角描边 |
-| `MODAL_SCRIM` | 家族模态背板(ink/30 + blur;面板由 Modal 用 CARD 自组,淡入淡出 + 240ms 卸载兜底) |
+| `PANEL_ROW` / `PANEL_COL` | Panel row: label left, control right (wide controls use the column variant); the compact sibling of LIST_ROW |
+| `SEGMENT` / `SEGMENT_ITEM_ON/OFF` | Segmented control: surface-2 track + accent-strong selected pill (family tab language) |
+| `PANEL_STATE_CHIP` | In-panel status chip: same scale as the h-8 row buttons |
+| `TOOLBAR` / `TOOLBAR_DIVIDER` | Floating glass-pill toolbar (bg-bg/80 + backdrop-blur-md, same material as the navigation) |
+| `STATUS_CHIP` | Status-info-menu chip: h-6 mono rounded outline |
+| `MODAL_SCRIM` | Family modal scrim (ink/30 + blur; the panel is self-assembled by Modal from CARD, fade in/out + 240ms unmount fallback) |
 
-> 2026-11 审计清理:KEY(键帽直接用 `.kvm-key` 组合)、MODAL_PANEL、SHEET(浮窗/抽屉自组 shell)、GHOST_TEXT(无信号幽灵水印已随 2ab66d0 退役)四个无消费片段删除;家族段的 CARD_HOVER/STRIP_PAPER/ALERT_DANGER/SECTION 是**家族同步保留**(zjblog 两向同步,本应用暂无消费者,勿删)。
+> 2026-11 audit cleanup: four consumer-less fragments deleted — KEY (keycaps use
+> the `.kvm-key` composition directly), MODAL_PANEL, SHEET (float/drawer
+> self-assemble their shell), GHOST_TEXT (the no-signal ghost watermark retired
+> with 2ab66d0); the family-section CARD_HOVER/STRIP_PAPER/ALERT_DANGER/SECTION
+> are **kept for family sync** (two-way sync with zjblog; this app has no
+> consumers yet — do not delete).
 
-## 4. 纸感物理在 app 里的落点
+## 4. Where paper physics lands in the app
 
-克制的家族原则在实时界面上收紧:胶带、撕纸、微倾斜只出现在**一次性纸面**(宏管理、虚拟键盘的顶部边缘),绝不进入每秒重绘的视频层:
+The family principle of restraint tightens on a real-time interface: tape, torn
+paper, and slight tilt appear only on **one-off paper surfaces** (macro
+management, the top edge of the virtual keyboard) and never enter the video layer
+that repaints every second:
 
-- **宏管理**:右上角双角胶带,按键用 `MONO_CHIP`
-- **虚拟键盘**:底部抽屉 + 左上单胶带,按键 `.kvm-key`(surface 面、mono 11px、按下 accent-strong + translateY(1px) 物理下沉)
-- **无信号**:`hollow-text` 幽灵水印 + 纸片按钮
-- **不使用**:paper-note 横线纸(与舞台纸纹打架)、postmark、marker-strip
+- **Macro management**: two-corner tape at the top right; keys use `MONO_CHIP`
+- **Virtual keyboard**: bottom drawer + single tape at the top left; keys
+  `.kvm-key` (surface face, mono 11px, pressed state accent-strong +
+  translateY(1px) physical sink)
+- **No signal**: `hollow-text` ghost watermark + paper-strip button
+- **Not used**: paper-note ruled paper (clashes with the stage paper texture),
+  postmark, marker-strip
 
-## 5. 动效
+## 5. Motion
 
-全部沿用家族 keyframes(fade-up 入场 / fade-in / fade-out 0.16s + 240ms 兜底卸载 / reduced-motion 全局压平)。新增唯一动画:`kvm-pulse`(录制点呼吸,1.2s),同样尊重 reduced-motion。主题切换沿用 stand-down 窗口。
+Everything reuses the family keyframes (fade-up entrance / fade-in / fade-out
+0.16s + 240ms fallback unmount / reduced-motion global flattening). The only new
+animation: `kvm-pulse` (recording-dot breathing, 1.2s), which also respects
+reduced-motion. Theme switching reuses the stand-down window.
 
-## 6. 可访问性
+## 6. Accessibility
 
-- 工具栏 `role="toolbar"`,每个图标钮必带 `aria-label` + `title`;面板/弹层触发钮带 `aria-expanded`(IconButton `expanded` prop);分段控件 `role="radiogroup"`;开关 `role="switch"` + `aria-checked`
-- LED/HID 芯片 `role="img"` + `aria-label` 形如 `CAPS 开/关`(状态词走 `common.on/off` 词库键);REC 计时数字 `aria-hidden`,录制**开始/停止**事件由常驻 sr-only `role="status"` 播报(不逐秒播报)
-- 弹层焦点契约(2026-11 起):Modal 打开聚焦面板、Tab 圈定、关闭归还触发钮;Popover 关闭归还触发钮(外部 pointerdown 关闭除外 —— 焦点留在用户点击处);Dropdown 列表 ArrowUp/Down/Home/End + 打开聚焦选中项(APG listbox)
-- 焦点环 2px accent(家族 base.css 原样);触控目标按 §2 guideline(基线 36–40px,芯片层 24px 注册地板);`pointer:coarse` 下输入控件 16px 防 iOS 缩放
-- 跳转链接直达 `#video`(文案走词库);弹层 Esc 可退、外部 pointerdown 关闭;虚拟键盘 Esc 可关 + 窗口 blur 释放按住的键(与物理转发同守卫)
-- 能力横幅:非 Chromium / 非安全上下文启动时导航下出现一条 `role="status"` 提示(browser.* 三键),Chromium 桌面恒不渲染 —— Lighthouse CLS 无影响
+- Toolbar `role="toolbar"`; every icon button must carry `aria-label` + `title`;
+  panel/overlay trigger buttons carry `aria-expanded` (IconButton `expanded`
+  prop); segmented controls `role="radiogroup"`; toggles `role="switch"` +
+  `aria-checked`
+- LED/HID chips `role="img"` + `aria-label` of the form `CAPS 开/关` ("CAPS
+  On/Off"; the state words come from the `common.on/off` dictionary keys); REC
+  timer digits are `aria-hidden`, and recording **start/stop** events are
+  announced by a persistent sr-only `role="status"` (not every second)
+- Overlay focus contract (since 2026-11): Modal focuses the panel on open, traps
+  Tab, returns focus to the trigger on close; Popover returns focus to the trigger
+  on close (except outside-pointerdown close — focus stays where the user
+  clicked); Dropdown lists ArrowUp/Down/Home/End + focus the selected item on open
+  (APG listbox)
+- Focus ring 2px accent (family base.css verbatim); touch targets per the §2
+  guidelines (baseline 36–40px, chip layer at the registered 24px floor); input
+  controls 16px under `pointer:coarse` to prevent iOS zoom
+- Skip link goes straight to `#video` (copy from the dictionary); overlays dismiss
+  on Esc and close on outside pointerdown; the virtual keyboard closes on Esc +
+  window blur releases held keys (same guard as physical forwarding)
+- Capability banner: on startup in non-Chromium / non-secure contexts, a
+  `role="status"` notice appears below the navigation (the three browser.* keys);
+  on Chromium desktop it never renders — no Lighthouse CLS impact
 
-## 7. 响应式契约
+## 7. Responsive contract
 
-| 断点 | 布局 |
+| Breakpoint | Layout |
 | --- | --- |
-| `md`(768) | 工具栏:顶部胶囊 ⇄ 底部固定条(面板从下往上弹);导航标题副文字显隐 |
-| `650px` | 触屏手势启停阈值(继承原版) |
-| 虚拟键盘控制簇 | `md` 以下隐藏(移动端只留主键区 + 方向键) |
+| `md` (768) | Toolbar: top pill ⇄ bottom fixed bar (panels spring up from below); navigation title subtitle shows/hides |
+| `650px` | Touch-gesture enable/disable threshold (inherited from the original) |
+| Virtual-keyboard control cluster | Hidden below `md` (mobile keeps only the main key area + arrow keys) |
 
-字号全端恒定(界面 text-sm、meta text-xs 12px 地板,家族规则)。
+Font sizes are constant across all form factors (UI text-sm, meta text-xs 12px
+floor — family rule).
 
-## 8. 性能与 SEO 契约(家族 §15 的 KVM 版)
+## 8. Performance and SEO contract (the KVM version of family §15)
 
-- `pnpm audit` 门禁:Performance ≥ 90(实测 100)/ A11y / BP / SEO = 100,双档位(桌面+`LH_FORM_FACTOR=mobile`)都必须通过;第五类 `agentic-browsing` 98 分来自 ard-schema 的 `text/html` 非标准发现类型 —— 控制台入口**确实是** HTML 页,登记为接受 insight(§AUDIT.md),不追
-- 零 webfont、零图片资源(图标 = 内联 lucide SVG;logo = 代码生成 PNG)
-- JS 单包 ≈378KB(≈119KB gzip),React 19 + jotai;首屏无阻塞 JS(CSS 唯一渲染阻塞)
-- 1Hz 遥测不重渲染舞台树:`useVideoStats` 隔离在 `VideoStatsBridge` 子组件(2026-11);Popover `onClose` 用 `useCallback` 固定,避免每秒重装 document 监听
-- Agentic 友好:`robots.txt` / `llms.txt` / `.well-known/ard.json`(家族 agentic browsing 立场的延续)
+- `pnpm audit` gate: Performance ≥ 90 (measured 100) / A11y / BP / SEO = 100, both
+  form factors (desktop + `LH_FORM_FACTOR=mobile`) must pass; the fifth category
+  `agentic-browsing` scores 98 because of the ard-schema `text/html` non-standard
+  discovery type — the console entry **really is** an HTML page; registered as an
+  accepted insight (§AUDIT.md), not chased
+- Zero webfont, zero image assets (icons = inline lucide SVG; logo =
+  code-generated PNG)
+- Single JS bundle ≈378KB (≈119KB gzip), React 19 + jotai; no render-blocking JS
+  on first paint (CSS is the only render blocker)
+- 1Hz telemetry does not re-render the stage tree: `useVideoStats` is isolated in
+  the `VideoStatsBridge` child component (2026-11); Popover `onClose` is pinned
+  with `useCallback` to avoid reinstalling document listeners every second
+- Agentic-friendly: `robots.txt` / `llms.txt` / `.well-known/ard.json` (continuing
+  the family's agentic-browsing stance)
 
-## 9. 双向同步清单
+## 9. Two-way sync checklist
 
-改这里也要改那边(反之亦然):
+Change here, change there too (and vice versa):
 
-- `src/styles/tokens.css` ←→ zjblog `src/styles/tokens.css`(逐字节)
-- `src/lib/styles.ts` 家族片段区 ←→ zjblog `src/lib/styles.ts`
-- `src/styles/base.css` / `behaviors.css` ←→ 同名文件
-- `lib/theme.ts` / index.html 防闪脚本 ←→ zjblog `lib/theme.ts` + THEME_BOOTSTRAP
+- `src/styles/tokens.css` ←→ zjblog `src/styles/tokens.css` (byte-identical)
+- `src/lib/styles.ts` family fragment section ←→ zjblog `src/lib/styles.ts`
+- `src/styles/base.css` / `behaviors.css` ←→ the same-named files
+- `lib/theme.ts` / index.html anti-flicker script ←→ zjblog `lib/theme.ts` + THEME_BOOTSTRAP
