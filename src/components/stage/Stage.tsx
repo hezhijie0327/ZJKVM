@@ -246,31 +246,37 @@ function WiringDiagram() {
         </marker>
       </defs>
 
-      {/* target tower */}
-      <rect x="18" y="48" width="104" height="96" rx="10" fill="var(--surface-2)" stroke="var(--ink-3)" />
-      <rect x="36" y="66" width="68" height="9" rx="2" fill="var(--ink-3)" />
-      <rect x="36" y="84" width="68" height="9" rx="2" fill="var(--ink-3)" />
-      <rect x="36" y="102" width="68" height="9" rx="2" fill="var(--ink-3)" />
-      <text x="70" y="166" textAnchor="middle" fontSize="12" fontWeight="500" fill="var(--ink)">
+      {/* target desktop tower: power button, drive bays, vent grille, feet */}
+      <rect x="18" y="40" width="76" height="112" rx="7" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <circle cx="56" cy="56" r="5" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <circle cx="56" cy="56" r="2" fill="var(--ink-3)" />
+      <rect x="27" y="68" width="58" height="5" rx="2" fill="var(--ink-3)" />
+      <rect x="27" y="78" width="58" height="3" rx="1.5" fill="var(--ink-3)" />
+      <rect x="28" y="116" width="56" height="3" rx="1.5" fill="var(--ink-3)" />
+      <rect x="28" y="124" width="56" height="3" rx="1.5" fill="var(--ink-3)" />
+      <rect x="28" y="132" width="56" height="3" rx="1.5" fill="var(--ink-3)" />
+      <rect x="24" y="152" width="10" height="5" rx="2" fill="var(--ink-3)" />
+      <rect x="78" y="152" width="10" height="5" rx="2" fill="var(--ink-3)" />
+      <text x="56" y="176" textAnchor="middle" fontSize="12" fontWeight="500" fill="var(--ink)">
         {t("stage.wiring.target")}
       </text>
 
       {/* NanoKVM USB dongle (accent border = the hub everything meets at);
           inside, the USB-A port's T/H switch glyph — the physical toggle
           maps that port to the target or to this computer. */}
-      <rect x="258" y="76" width="128" height="64" rx="12" fill="var(--surface-2)" stroke="var(--accent)" />
-      <text x="322" y="97" textAnchor="middle" fontSize="12" fill="var(--ink)">
+      <rect x="246" y="64" width="128" height="64" rx="12" fill="var(--surface-2)" stroke="var(--accent)" />
+      <text x="310" y="85" textAnchor="middle" fontSize="12" fill="var(--ink)">
         NanoKVM USB
       </text>
-      <text x="300" y="121" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
+      <text x="288" y="109" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
         T
       </text>
-      <rect x="310" y="112" width="24" height="11" rx="5.5" fill="var(--surface-2)" stroke="var(--ink-3)" />
-      <circle cx="316" cy="117.5" r="3.5" fill="var(--ink-3)" />
-      <text x="344" y="121" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
+      <rect x="298" y="100" width="24" height="11" rx="5.5" fill="var(--surface-2)" stroke="var(--ink-3)" />
+      <circle cx="304" cy="105.5" r="3.5" fill="var(--ink-3)" />
+      <text x="332" y="109" textAnchor="middle" fontSize="9" fill="var(--ink-3)">
         H
       </text>
-      <text x="322" y="158" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+      <text x="310" y="146" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
         {t("stage.wiring.usbSwitch")}
       </text>
 
@@ -290,28 +296,20 @@ function WiringDiagram() {
       </text>
 
       {/* HDMI: target out → dongle in */}
-      <line x1="122" y1="84" x2="254" y2="84" stroke="var(--ink-3)" strokeWidth="1.5" markerEnd="url(#wiring-arrow)" />
-      <text x="190" y="74" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+      <line x1="94" y1="84" x2="242" y2="84" stroke="var(--ink-3)" strokeWidth="1.5" markerEnd="url(#wiring-arrow)" />
+      <text x="168" y="74" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
         HDMI
       </text>
 
       {/* HID: dongle → target (keyboard/mouse injection) */}
-      <line
-        x1="258"
-        y1="114"
-        x2="126"
-        y2="114"
-        stroke="var(--ink-3)"
-        strokeWidth="1.5"
-        markerEnd="url(#wiring-arrow)"
-      />
-      <text x="190" y="134" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
+      <line x1="246" y1="114" x2="98" y2="114" stroke="var(--ink-3)" strokeWidth="1.5" markerEnd="url(#wiring-arrow)" />
+      <text x="168" y="134" textAnchor="middle" fontSize="10" fill="var(--ink-3)">
         {t("stage.wiring.hid")}
       </text>
 
       {/* optional HDMI loop-out */}
       <line
-        x1="386"
+        x1="374"
         y1="84"
         x2="492"
         y2="46"
@@ -326,7 +324,7 @@ function WiringDiagram() {
 
       {/* USB: dongle → host computer */}
       <line
-        x1="386"
+        x1="374"
         y1="112"
         x2="506"
         y2="140"
