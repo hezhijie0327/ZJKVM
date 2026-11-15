@@ -2,9 +2,10 @@
 
 /**
  * ZJKVM icon generator — zero-dependency PNG writer.
- * Family mark: an amber-gold keycap (KVM starts with the keyboard) closed by
- * the family period at (85,85) — the same single-glyph grammar as the ZJBlog
- * and ZJSearch marks. Ground per the family asset matrix (DESIGN.md §2.2):
+ * Family mark: the simplified NanoKVM-USB dongle face (ring button + two
+ * status bars + port dash) closed by the family period at (85,85) — the
+ * same single-glyph grammar as the ZJBlog and ZJSearch marks. Ground per
+ * the family asset matrix (DESIGN.md §2.2):
  *   public/icons/icon-192.png            transparent glyph (PWA any)
  *   public/icons/icon-512.png            transparent glyph (PWA any)
  *   public/icons/icon-maskable-512.png   warm paper ground, 80% safe zone
@@ -87,22 +88,24 @@ function hex(color) {
  *  any); "paper" = warm paper #faf9f6 full-bleed — iOS apple-touch icons
  *  must stay opaque or they composite onto black. `inset` shrinks the glyph
  *  into the maskable safe zone (0.1 = glyph lives in the central 80%).
- *  Glyph layout in viewBox-100 terms: keycap outline (14,14)-(62,62) rx 12
- *  stroke 14, period (85,85) r 7 — identical to public/favicon.svg. */
+ *  Glyph layout in mark coordinates (tile frame -8..108): dongle face —
+ *  ring button c(27,27) r12, status bars (52,20)-(74,20) & (52,34)-(74,34),
+ *  port dash (20,52)-(20,62), composite-tier stroke 10; period (85,85) r 7 —
+ *  identical to public/favicon.svg. */
 function drawIcon(size, { ground = null, inset = 0 } = {}) {
   const rgba = Buffer.alloc(size * size * 4);
 
   const paper = hex("#faf9f6"); // family warm paper (light)
   const gold1 = hex("#f5c84c"); // gradient start
   const gold2 = hex("#e09f0a"); // gradient end
-  const ox = size * inset; // glyph origin (safe-zone offset)
-  const s = (size / 100) * (1 - 2 * inset); // viewBox-100 scale inside the zone
+  const s = (size / 116) * (1 - 2 * inset); // mark scale inside the zone (tile frame -8..108)
+  const ox = size * inset + 8 * s; // glyph origin (safe-zone offset + frame padding)
 
-  const capHalf = 24 * s; // half extent of the keycap square
-  const capR = 12 * s; // corner radius
-  const strokeHalf = 7 * s; // outline half-width
-  const cx = ox + 38 * s;
-  const cy = ox + 38 * s;
+  const ring = { x: ox + 27 * s, y: ox + 27 * s, r: 12 * s }; // dongle ring button
+  const strokeHalf = 5 * s; // composite-tier half-width (stroke 10)
+  const bar1 = { y: ox + 20 * s, x1: ox + 52 * s, x2: ox + 74 * s };
+  const bar2 = { y: ox + 34 * s, x1: ox + 52 * s, x2: ox + 74 * s };
+  const dash = { x: ox + 20 * s, y1: ox + 52 * s, y2: ox + 62 * s };
   const dot = { x: ox + 85 * s, y: ox + 85 * s, r: 7 * s };
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -116,14 +119,13 @@ function drawIcon(size, { ground = null, inset = 0 } = {}) {
       const g = clamp01((x + y) / (2 * size));
       const color = [lerp(gold1[0], gold2[0], g), lerp(gold1[1], gold2[1], g), lerp(gold1[2], gold2[2], g)];
 
-      // rounded-rect SDF → keycap outline stroke
-      const qx = Math.abs(x - cx) - (capHalf - capR);
-      const qy = Math.abs(y - cy) - (capHalf - capR);
-      const dist = Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - capR;
-      // glyph coverage: keycap stroke ∪ period, 0.75 px AA feather
-      const strokeA = clamp01(strokeHalf + 0.75 - Math.abs(dist));
+      // circle SDF → ring button stroke; capsule SDFs → bars + port dash
+      const ringA = clamp01(strokeHalf + 0.75 - Math.abs(Math.hypot(x - ring.x, y - ring.y) - ring.r));
+      const bar1A = clamp01(strokeHalf + 0.75 - Math.hypot(y - bar1.y, x - Math.min(Math.max(x, bar1.x1), bar1.x2)));
+      const bar2A = clamp01(strokeHalf + 0.75 - Math.hypot(y - bar2.y, x - Math.min(Math.max(x, bar2.x1), bar2.x2)));
+      const dashA = clamp01(strokeHalf + 0.75 - Math.hypot(x - dash.x, y - Math.min(Math.max(y, dash.y1), dash.y2)));
       const dotA = clamp01(dot.r + 0.75 - Math.hypot(x - dot.x, y - dot.y));
-      const a = Math.max(strokeA, dotA);
+      const a = Math.max(ringA, bar1A, bar2A, dashA, dotA);
       if (a <= 0 && ground === null) continue;
 
       const base = ground === "paper" ? paper : [0, 0, 0];
