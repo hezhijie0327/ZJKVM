@@ -1,5 +1,10 @@
 # ZJKVM
 
+[![Version](https://img.shields.io/badge/Version-1.0.0-informational)](https://github.com/hezhijie0327/ZJKVM/releases)
+[![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Biome](https://img.shields.io/badge/Biome-60A5FA?logo=biome&logoColor=white)](https://biomejs.dev/)
+
 **ZJKVM** —— 运行在浏览器里的 USB KVM 控制台,为 **NanoKVM-USB** 硬件量身打造。
 
 基于 **Vite + React 19 纯 SPA**,Tailwind CSS v4,jotai。所有数据只在本地浏览器与设备之间流转:视频由浏览器直接解码采集卡画面(getUserMedia),键鼠指令通过 Web Serial 写入 CH9329,不经任何服务器。设计语言遵循 [DESIGN.md](./DESIGN.md)(ZJ 设计系统:暖纸底 × 墨字 × 琥珀金,零 webfont),工程契约见 [AGENTS.md](./AGENTS.md)。
